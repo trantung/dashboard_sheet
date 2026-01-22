@@ -10,12 +10,14 @@ use Exception;
 use App\Models\Temp;
 use Illuminate\Support\Facades\Http;
 use App\Service\DatabaseDefaultService;
+use App\Service\SetupDefaultService;
 
 class ApiTestController extends Controller
 {
-    public function __construct(DatabaseDefaultService $databaseDefaultService) 
+    public function __construct(DatabaseDefaultService $databaseDefaultService, SetupDefaultService $setupDefaultService) 
     {
         $this->databaseDefaultService = $databaseDefaultService;
+        $this->setupDefaultService = $setupDefaultService;
     }
 
     public function index(Request $request)
@@ -308,6 +310,107 @@ class ApiTestController extends Controller
     {
         // $tempId = $request->temp_id;
         return $this->databaseDefaultService->importFromGoogleSheetByApiKey($request);
+    }
+
+    /**
+     * Test API to verify sudo password
+     * POST /api/domain/test/sudo-password
+     */
+    public function testSudoPassword(Request $request)
+    {
+        $rootPassword = getenv('SERVER_PASSWORD') ?: '0SVXGJBdQjPilduP5mwi';
+        $fileName = "my-site.conf";
+        $fullPath = "/etc/apache2/sites-available/" . $fileName;
+    
+        $configContent = "<VirtualHost *:80>\n    ServerName test.com\n    DocumentRoot /var/www/html\n</VirtualHost>";
+    
+        // Chú ý: escapeshellarg sẽ bao bọc chuỗi, nhưng ta cần cẩn thận với mật khẩu
+        $escapedPath = escapeshellarg($fullPath);
+        $escapedContent = escapeshellarg($configContent);
+    
+        // Sử dụng cơ chế Pipe đơn giản nhất: echo "password" | sudo -S ...
+        // Thêm \n vào cuối password là bắt buộc đối với sudo -S
+        $command = "echo " . escapeshellarg($rootPassword) . " | sudo -S tee $escapedPath <<EOF
+    $configContent
+    EOF
+    2>&1";
+    
+        exec($command, $output, $returnCode);
+    
+        if ($returnCode !== 0) {
+            echo "Thất bại! Mã lỗi: $returnCode <br>";
+            echo "Chi tiết lỗi từ hệ thống: <pre>";
+            print_r($output);
+            echo "</pre>";
+            
+            // Dòng này để debug xem user thực sự đang chạy script là ai
+            echo "User thực tế: " . shell_exec('whoami');
+        } else {
+            echo "Thành công! Đã tạo file: " . $fullPath;
+        }
+    }
+    /**
+     * Test API to create Apache VirtualHost config file
+     * POST /api/domain/test/vhost
+     * Body: { "domain": "test.microgem.io.vn", "project_path": "/var/www/html/test", "port_project": 3001 }
+     */
+    public function testVirtualHost(Request $request)
+    {
+        try {
+            $request->validate([
+                'domain' => 'required|string',
+                'project_path' => 'required|string',
+                'port_project' => 'integer|min:1|max:65535'
+            ]);
+
+            $domain = $request->input('domain');
+            $projectPath = $request->input('project_path');
+            $portProject = $request->input('port_project', 3001);
+
+            Log::info("Testing VirtualHost creation", [
+                'domain' => $domain,
+                'project_path' => $projectPath,
+                'port_project' => $portProject
+            ]);
+
+            // Call the service method
+            $result = $this->setupDefaultService->addDomainToDns($domain, $projectPath, $portProject);
+
+            // Check if file exists
+            $confPath = "/etc/apache2/sites-available/{$domain}.conf";
+            $fileExists = file_exists($confPath);
+            $fileContent = $fileExists ? file_get_contents($confPath) : null;
+            dd($result);
+            return response()->json([
+                'status' => $result['status'] ?? false,
+                'message' => $result['message'] ?? 'Unknown result',
+                'data' => [
+                    'result' => $result,
+                    'file_exists' => $fileExists,
+                    'file_path' => $confPath,
+                    'file_content' => $fileContent,
+                    'file_size' => $fileExists ? filesize($confPath) : 0,
+                    'file_permissions' => $fileExists ? substr(sprintf('%o', fileperms($confPath)), -4) : null,
+                ],
+                'debug' => [
+                    'password_set' => !empty(getenv('SERVER_PASSWORD')),
+                    'password_length' => strlen(getenv('SERVER_PASSWORD') ?: ''),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Error in testVirtualHost: " . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ]
+            ], 500);
+        }
     }
 
 }
