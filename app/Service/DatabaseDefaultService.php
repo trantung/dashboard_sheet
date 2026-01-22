@@ -241,22 +241,21 @@ class DatabaseDefaultService
     public function saveContentSheetEcomerce($rows, $db_name, $apiKey, $defaultSheetId)
     {
         $arrayCheck = [
-            0 => "SKU",
-            1 => "Name",
-            2 => "Inventory",
-            3 => "Price",
-            4 => "Old Price",
-            5 => "Link",
-            6 => "Size",
-            7 => "Color",
-            8 => "Material",
-            9 => "Categories",
+            0  => "SKU",
+            1  => "Name",
+            2  => "Inventory",
+            3  => "Price",
+            4  => "Old Price",
+            5  => "Link",
+            6  => "Size",
+            7  => "Color",
+            8  => "Material",
+            9  => "Categories",
             10 => "Description",
             11 => "Rating",
             12 => "Best selling",
             13 => "New Arrival",
-            14 => 'Image'
-
+            14 => "Image",
         ];
         $checkContentSheetName = $this->checkColumnNameSheet($arrayCheck, $rows[0]);
 
@@ -269,19 +268,88 @@ class DatabaseDefaultService
                 return false;
             }
         }
+
+        // Lấy slug cột category (Categories -> categories)
         $categorySlug = $this->getSlugCategory($rows[0], CATEGORY_SHEET_NAME);
-        $productField = $this->convertTextToProductField();
-        
+
+        // Bỏ hàng tiêu đề
         unset($rows[0]);
-        dd($rows);
+
+        // Chuẩn hoá dữ liệu theo cấu trúc bảng products của ecommerce
         $res = [];
-        foreach($rows as $key => $value) {
-            foreach($value as $k => $v)
-            {
-                $keyRes = $productField[$k];
-                $res[$key][$keyRes] = $v;
+        foreach ($rows as $key => $value) {
+            // Bỏ qua dòng trống
+            if (!is_array($value) || count(array_filter($value, fn($v) => $v !== null && $v !== '')) === 0) {
+                continue;
             }
+
+            $item   = [];
+            $images = [];
+
+            foreach ($value as $k => $v) {
+                switch ($k) {
+                    case 0:  // SKU
+                        $item['sku'] = $v;
+                        break;
+                    case 1:  // Name
+                        $item['name'] = $v;
+                        break;
+                    case 2:  // Inventory
+                        $item['inventory'] = is_numeric($v) ? (int) $v : 0;
+                        break;
+                    case 3:  // Price
+                        $item['price'] = $v;
+                        break;
+                    case 4:  // Old Price
+                        $item['old_price'] = $v;
+                        break;
+                    case 5:  // Link
+                        $item['link'] = $v;
+                        break;
+                    case 6:  // Size
+                        $item['size'] = $v;
+                        break;
+                    case 7:  // Color
+                        $item['color'] = $v;
+                        break;
+                    case 8:  // Material
+                        $item['material'] = $v;
+                        break;
+                    case 9:  // Categories (dùng cho bảng category)
+                        $item['categories'] = $v;
+                        break;
+                    case 10: // Description
+                        $item['description'] = $v;
+                        break;
+                    case 11: // Rating
+                        $item['rating'] = $v;
+                        break;
+                    case 12: // Best selling
+                        $item['best_selling'] = $v;
+                        break;
+                    case 13: // New Arrival
+                        $item['new_arrival'] = $v;
+                        break;
+                    case 14: // Image chính
+                    case 15: // Image phụ 1
+                    case 16: // Image phụ 2
+                    case 17: // Image phụ 3
+                    case 18: // Image phụ 4 / Pinterest
+                        if (trim((string) $v) !== '') {
+                            $images[] = $v;
+                        }
+                        break;
+                    default:
+                        // Bỏ qua các cột không map
+                        break;
+                }
+            }
+
+            $item['images'] = json_encode($images);
+
+            $res[$key] = $item;
         }
+
         $connectionName = setupTenantConnection($db_name);
         $this->saveProduct($connectionName, $res, $categorySlug);
         return true;
@@ -289,13 +357,26 @@ class DatabaseDefaultService
 
     public function saveProduct($connectionName, $data, $categorySlug)
     {
-        foreach($data as $value)
-        {
-            $categoryIds = $this->saveCategoryTable($connectionName, $value[$categorySlug]);
-            // dd($categoryIds);
+        foreach ($data as $value) {
+            // Lưu categories nếu có
+            $categoryIds = [];
+            if ($categorySlug && isset($value[$categorySlug]) && trim($value[$categorySlug]) !== '') {
+                $categoryIds = $this->saveCategoryTable($connectionName, $value[$categorySlug]);
+            }
+
             unset($value[$categorySlug]);
-            $productId = $this->saveProductTable($connectionName, $value);
-            $this->saveProductCategoryTable($connectionName, $productId, $categoryIds);
+
+            // Nếu là dữ liệu ecommerce (có sku & description) thì lưu theo bảng ecommerce
+            if (isset($value['sku']) && isset($value['description'])) {
+                $productId = $this->saveProductTableEcommerce($connectionName, $value);
+            } else {
+                // Mặc định là blog
+                $productId = $this->saveProductTable($connectionName, $value);
+            }
+
+            if (!empty($categoryIds)) {
+                $this->saveProductCategoryTable($connectionName, $productId, $categoryIds);
+            }
         }
     }
     
@@ -460,6 +541,41 @@ class DatabaseDefaultService
         $b = isset($rgbColor['blue']) ? intval($rgbColor['blue'] * 255) : 0;
 
         return sprintf("#%02x%02x%02x", $r, $g, $b);
+    }
+
+
+    /**
+     * Lưu sản phẩm cho ecommerce (bảng products trong migration ecommerce)
+     */
+    public function saveProductTableEcommerce($connectionName, $data)
+    {
+        // Chuyển TRUE/FALSE thành 1/2 như comment trong migration
+        $bestSellingRaw = strtoupper(trim((string)($data['best_selling'] ?? '')));
+        $newArrivalRaw  = strtoupper(trim((string)($data['new_arrival'] ?? '')));
+
+        $bestSelling = $bestSellingRaw === 'TRUE' ? 1 : 2;
+        $newArrival  = $newArrivalRaw === 'TRUE' ? 1 : 2;
+
+        $imagesJson = $data['images'] ?? json_encode([]);
+
+        return DB::connection($connectionName)->table('products')->insertGetId([
+            'name'         => $data['name']        ?? '',
+            'sku'          => $data['sku']         ?? '',
+            'inventory'    => isset($data['inventory']) && is_numeric($data['inventory']) ? (int) $data['inventory'] : 0,
+            'price'        => $data['price']       ?? '',
+            'old_price'    => $data['old_price']   ?? '',
+            'link'         => $data['link']        ?? '',
+            'size'         => $data['size']        ?? '',
+            'color'        => $data['color']       ?? '',
+            'material'     => $data['material']    ?? '',
+            'description'  => $data['description'] ?? '',
+            'rating'       => $data['rating']      ?? '',
+            'best_selling' => $bestSelling,
+            'new_arrival'  => $newArrival,
+            'images'       => $imagesJson,
+            'created_at'   => Carbon::now(),
+            'updated_at'   => Carbon::now(),
+        ]);
     }
 
 

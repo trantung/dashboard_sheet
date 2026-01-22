@@ -111,6 +111,8 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::post('/domain/test', [ApiTestController::class, 'index'])->name('api.domain.test.index');
 Route::post('/domain/test/import_data', [ApiTestController::class, 'importData'])->name('api.domain.test.getdata');
 Route::post('/domain/test/delete', [ApiTestController::class, 'deleteDomain'])->name('api.domain.test.delete');
+Route::post('/domain/test/vhost', [ApiTestController::class, 'testVirtualHost'])->name('api.domain.test.vhost');
+Route::post('/domain/test/sudo-password', [ApiTestController::class, 'testSudoPassword'])->name('api.domain.test.sudo_password');
 
 Route::prefix('api_ecomerce')
     ->middleware('api')
