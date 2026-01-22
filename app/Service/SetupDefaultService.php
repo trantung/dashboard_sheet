@@ -15,8 +15,7 @@ class SetupDefaultService
         try {
             $apiToken = getenv('CLOUD_FLARE_API_TOKEN');
             $ip = getenv('SERVER_IP_ADDRESS');
-
-            [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, 'microgem.io.vn');
+            [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, DOMAIN_BASE);
             $zoneId = $this->getZoneIdByDomain($apiToken, $domain);
 
             if (!$zoneId) {
@@ -48,7 +47,7 @@ class SetupDefaultService
         }
     }
 
-    public function extractSubdomainAndDomain($fullDomain, $domainRoot = 'microgem.io.vn')
+    public function extractSubdomainAndDomain($fullDomain, $domainRoot = DOMAIN_BASE)
     {
         if (!str_ends_with($fullDomain, $domainRoot)) {
             throw new Exception("The domain name does not match the root domain ({$domainRoot})");
@@ -132,7 +131,7 @@ class SetupDefaultService
             exec("sudo a2ensite {$domain}.conf", $out1, $c1);
 
             // Ensure SSL configuration exists
-            $this->ensureSSLConfig($domain);
+            $this->ensureSSLConfig($domain, $portProject);
 
             // Reload Apache
             exec("sudo systemctl reload apache2", $out3, $c2);
@@ -159,56 +158,160 @@ class SetupDefaultService
         }
     }
 
-    public function ensureSSLConfig($domain)
+    public function ensureSSLConfig($domain, $portProject = 3001)
     {
         try {
             $sslConfPath = "/etc/apache2/sites-available/{$domain}-le-ssl.conf";
-            $certbotCmd = escapeshellcmd("sudo certbot --apache -d {$domain} --non-interactive --agree-tos -m admin@{$domain} --redirect");
+            $httpConfPath = "/etc/apache2/sites-available/{$domain}.conf";
+            $certDir = "/etc/letsencrypt/live/{$domain}";
             $reloadCmd = "sudo systemctl reload apache2";
 
-            // Nếu SSL đã tồn tại, không cần tạo lại
-            if (file_exists($sslConfPath)) {
-                Log::info("SSL already exists for {$domain}");
+            // Helper function để check file/directory bằng sudo (vì cert được tạo bởi root)
+            $checkFile = function($path) {
+                exec("sudo test -f " . escapeshellarg($path) . " && echo 'exists' || echo 'not_exists'", $checkOutput, $checkCode);
+                $result = !empty($checkOutput) && $checkOutput[0] === 'exists';
+                return $result;
+            };
+            $checkDir = function($path) {
+                exec("sudo test -d " . escapeshellarg($path) . " && echo 'exists' || echo 'not_exists'", $checkOutput, $checkCode);
+                $result = !empty($checkOutput) && $checkOutput[0] === 'exists';
+                Log::info("Checking directory {$path}: " . ($result ? 'exists' : 'not_exists') . " (output: " . json_encode($checkOutput) . ")");
+                return $result;
+            };
+
+            // Nếu file ssl config đã tồn tại và cert cũng đã có thì bỏ qua
+            if ($checkFile($sslConfPath) && $checkDir($certDir)) {
+                Log::info("SSL config and certificate already exist for {$domain}");
                 return;
             }
 
-            // Kiểm tra domain đã được public DNS resolve chưa
-            $maxAttempts = 10;
-            $delaySeconds = 10;
-            $resolved = false;
+            // Đảm bảo cert đã tồn tại, nếu chưa thì mới chạy certbot
+            $certExists = $checkDir($certDir)
+                && $checkFile($certDir . '/fullchain.pem')
+                && $checkFile($certDir . '/privkey.pem');
 
-            for ($i = 0; $i < $maxAttempts; $i++) {
-                $dns = dns_get_record($domain, DNS_A);
-                if (!empty($dns)) {
-                    $resolved = true;
-                    Log::info("DNS resolved for {$domain}: " . json_encode($dns));
-                    break;
-                } else {
-                    Log::info("Waiting for DNS to resolve for {$domain}... attempt " . ($i + 1));
-                    sleep($delaySeconds);
+            if (!$certExists) {
+                // Kiểm tra domain đã được public DNS resolve chưa
+                $maxAttempts = 10;
+                $delaySeconds = 10;
+                $resolved = false;
+
+                for ($i = 0; $i < $maxAttempts; $i++) {
+                    $dns = dns_get_record($domain, DNS_A);
+                    if (!empty($dns)) {
+                        $resolved = true;
+                        Log::info("DNS resolved for {$domain}: " . json_encode($dns));
+                        break;
+                    } else {
+                        Log::info("Waiting for DNS to resolve for {$domain}... attempt " . ($i + 1));
+                        sleep($delaySeconds);
+                    }
+                }
+
+                if (!$resolved) {
+                    Log::error("DNS not resolved for {$domain} after {$maxAttempts} attempts");
+                    return;
+                }
+
+                // Thử chạy certbot để cấp SSL (chỉ lo phần cert, không phụ thuộc vào việc nó tạo vhost hay không)
+                $certbotCmd = escapeshellcmd("sudo certbot --apache -d {$domain} --non-interactive --agree-tos -m admin@{$domain} --redirect");
+
+                exec($certbotCmd . " 2>&1", $output, $code);
+                Log::info("Certbot output for {$domain}:", $output);
+
+                if ($code !== 0) {
+                    // Một số trường hợp certbot vẫn cấp SSL thành công nhưng trả về mã lỗi
+                    Log::warning("Certbot exited with non-zero code {$code} for {$domain}");
+                }
+
+                // Đợi và retry để certbot hoàn tất việc tạo file (có thể mất vài giây)
+                $maxRetries = 10;
+                $retryDelay = 2;
+                $certExists = false;
+
+                for ($retry = 0; $retry < $maxRetries; $retry++) {
+                    sleep($retryDelay);
+
+                    // Cập nhật lại trạng thái cert (dùng sudo để check vì file được tạo bởi root)
+                    $certExists = $checkDir($certDir)
+                        && $checkFile($certDir . '/fullchain.pem')
+                        && $checkFile($certDir . '/privkey.pem');
+
+                    if ($certExists) {
+                        Log::info("Certificate files confirmed for {$domain} after " . (($retry + 1) * $retryDelay) . " seconds");
+                        break;
+                    } else {
+                        Log::info("Waiting for certificate files for {$domain}... retry " . ($retry + 1) . "/{$maxRetries}");
+                    }
+                }
+
+                // Nếu sau khi chờ vẫn không detect được file cert (do hạn chế sudo, quyền, v.v.)
+                // thì chỉ log cảnh báo, KHÔNG return; vẫn tiếp tục tạo ssl.conf và reload Apache.
+                if (!$certExists) {
+                    Log::warning("Certificate files COULD NOT be verified for {$domain} after running certbot and waiting " . ($maxRetries * $retryDelay) . " seconds, continuing to create SSL vhost anyway.");
                 }
             }
 
-            if (!$resolved) {
-                Log::error("DNS not resolved for {$domain} after {$maxAttempts} attempts");
-                return;
+            // Đến đây chắc chắn cert đã tồn tại, nếu chưa có ssl conf thì tự tạo
+            if (!$checkFile($sslConfPath)) {
+                // Lấy portProject từ file http vhost ({$domain}.conf)
+                if ($checkFile($httpConfPath)) {
+                // Thêm sudo vào lệnh cat
+                exec("sudo /usr/bin/cat " . escapeshellarg($httpConfPath), $confLines, $catCode);
+                
+                if ($catCode === 0) {
+                    $confContent = implode("\n", $confLines);
+                    // Regex nên linh hoạt hơn (phòng trường hợp khoảng trắng khác nhau)
+                    if (preg_match('/ProxyPass\s+\/\s+http:\/\/localhost:(\d+)\/?/', $confContent, $matches)) {
+                        $portProject = $matches[1];
+                        Log::info("Found port for {$domain}: {$portProject}");
+                    }
+                } else {
+                    Log::error("Failed to cat config file for {$domain}. Code: {$catCode}");
+                }
             }
 
-            // Thử chạy certbot để cấp SSL
-            exec($certbotCmd . " 2>&1", $output, $code);
-            Log::info("Certbot output for {$domain}:", $output);
+                $sslVhostConfig = <<<EOL
+                <IfModule mod_ssl.c>
+                    <VirtualHost *:443>
+                        ServerName {$domain}
+                        ErrorLog \${APACHE_LOG_DIR}/{$domain}_ssl_error.log
+                        CustomLog \${APACHE_LOG_DIR}/{$domain}_ssl_access.log combined
+                        SSLEngine on
+                        SSLCertificateFile /etc/letsencrypt/live/{$domain}/fullchain.pem
+                        SSLCertificateKeyFile /etc/letsencrypt/live/{$domain}/privkey.pem
+                        ProxyPreserveHost On
+                        ProxyRequests Off
+                        ProxyPass / http://localhost:{$portProject}/
+                        ProxyPassReverse / http://localhost:{$portProject}/
+                        RewriteEngine on
+                        RewriteCond %{HTTP:Upgrade} =websocket [NC]
+                        RewriteRule /(.*) ws://localhost:{$portProject}/\$1 [P,L]
+                    </VirtualHost>
+                </IfModule>
+                EOL;
 
-            if ($code !== 0) {
-                Log::error("Certbot failed for {$domain} with code {$code}");
-                return;
+                $createSslCmd = "echo " . escapeshellarg($sslVhostConfig) . " | sudo tee {$sslConfPath} > /dev/null";
+                exec($createSslCmd, $sslOut, $sslCode);
+                if ($sslCode !== 0) {
+                    Log::error("Failed to create SSL VirtualHost config for {$domain}");
+                    return;
+                }
+
+                // Enable SSL site
+                exec("sudo a2ensite {$domain}-le-ssl.conf", $enableOut, $enableCode);
+                if ($enableCode !== 0) {
+                    Log::error("Failed to enable SSL site for {$domain}");
+                    return;
+                }
             }
-
-            // Nếu file ssl config được tạo thành công, reload Apache
-            if (file_exists($sslConfPath)) {
+            
+            // Nếu file ssl config đã tồn tại, reload Apache để áp dụng
+            if ($checkFile($sslConfPath)) {
                 exec($reloadCmd, $reloadOutput, $reloadCode);
-                Log::info("Apache reloaded for {$domain}");
+                Log::info("Apache reloaded for {$domain} with SSL config");
             } else {
-                Log::warning("SSL config not found after certbot for {$domain}");
+                Log::error("SSL config not found for {$domain} after processing");
             }
 
         } catch (\Exception $e) {
@@ -216,14 +319,13 @@ class SetupDefaultService
         }
     }
 
-
     //delete domain
     public function deleteDomain($request)
     {
         try {
             $apiToken = getenv('CLOUD_FLARE_API_TOKEN');
             $fullDomain = $request['full_domain'];
-            [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, 'microgem.io.vn');
+            [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, DOMAIN_BASE);
             $zoneId = $this->getZoneIdByDomain($apiToken, $domain);
             $result = $this->deleteApacheVirtualHostAndCloudflare($fullDomain, $apiToken, $zoneId);
             return response()->json([

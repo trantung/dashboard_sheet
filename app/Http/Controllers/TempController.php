@@ -158,7 +158,7 @@ class TempController extends Controller
             ]);
 
             // Create site
-            $domain_name = $temp->site_domain . '.microgem.io.vn';
+            $domain_name = $temp->site_domain . '.' . DOMAIN_BASE;
             $site = Site::create([
                 'workspace_id' => $temp->workspace_id,
                 'type' => $temp->site_type,
