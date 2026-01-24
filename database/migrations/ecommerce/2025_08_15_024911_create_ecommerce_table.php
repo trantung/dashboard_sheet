@@ -68,6 +68,7 @@ return new class extends Migration
             $table->tinyInteger('font_size')->default(1)->comment('1: display small text title 2: not small');
             $table->integer('paginate')->default(10)->comment('paginate from 10-50');
             $table->tinyInteger('grid_content')->default(2)->comment('Display the number of content columns');
+            $table->tinyInteger('disable_toc')->default(2)->comment('1: disable TOC 2: enable');
             $table->string('font_family')->default('Roboto')->comment('Display font for website using google font');
             $table->tinyInteger('site_publish')->default(1)->comment('1: Publish your website to the internet 2: not publish');
             $table->timestamps();
