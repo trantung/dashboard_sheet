@@ -105,7 +105,20 @@ return new class extends Migration
 
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
-            $table->string('code')->comment('code sinh ra khi tạo mới 1 order');
+            $table->string('order_no')->unique()->comment('mã đơn hàng');
+            $table->string('name')->comment('tên khách hàng');
+            $table->string('email')->comment('email khách hàng');
+            $table->string('phone')->nullable()->comment('số điện thoại');
+            $table->text('note')->nullable()->comment('ghi chú');
+            $table->text('address')->comment('địa chỉ giao hàng');
+            $table->string('discount_coupon')->nullable()->comment('mã giảm giá');
+            $table->string('currency')->default('$')->comment('đơn vị tiền tệ');
+            $table->decimal('discount', 10, 2)->default(0)->comment('giảm giá');
+            $table->decimal('subtotal', 10, 2)->default(0)->comment('tổng tiền sản phẩm');
+            $table->decimal('shipping', 10, 2)->default(0)->comment('phí vận chuyển');
+            $table->decimal('total', 10, 2)->default(0)->comment('tổng tiền');
+            $table->string('method')->default('COD')->comment('phương thức thanh toán');
+            $table->tinyInteger('status')->default(0)->comment('trạng thái đơn hàng: 0: pending, 1: processing, 2: completed, 3: cancelled');
             $table->timestamps();
         });
 
@@ -113,7 +126,13 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('product_id');
             $table->unsignedBigInteger('order_id');
+            $table->string('sku')->comment('sku sản phẩm');
+            $table->string('name')->comment('tên sản phẩm');
+            $table->decimal('price', 10, 2)->comment('giá sản phẩm');
+            $table->integer('quantity')->default(1)->comment('số lượng');
             $table->timestamps();
+            
+            $table->foreign('order_id')->references('id')->on('orders')->onDelete('cascade');
         });
     }
 
