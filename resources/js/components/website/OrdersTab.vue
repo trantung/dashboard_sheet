@@ -40,7 +40,7 @@
                         </thead>
                         <tbody>
                             <tr v-for="order in ordersList" :key="order.id">
-                                <td class="px-4 py-3">{{ order.id }}</td>
+                                <td class="px-4 py-3">{{ order.order_no }}</td>
                                 <td class="px-4 py-3">{{ order.name }}</td>
                                 <td class="px-4 py-3">{{ order.email }}</td>
                                 <td class="px-4 py-3">${{ order.subtotal.toFixed(2) }}</td>

@@ -102,6 +102,34 @@
                     </div>
                 </div>
 
+                <div v-if="isEcommerce" class="card border-1 mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title mb-1">Detail page</h6>
+                                <p class="text-muted small mb-0">Hide the website detail page</p>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input v-model="disableDetailPage" class="form-check-input" type="checkbox" id="disableDetailPage">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="isEcommerce" class="card border-1 mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title mb-1">Disable banner</h6>
+                                <p class="text-muted small mb-0">Hide the banner section on your website</p>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input v-model="disableBanner" class="form-check-input" type="checkbox" id="disableBanner">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card border-1 mb-4">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
@@ -257,6 +285,20 @@
                         </select>
                     </div>
                 </div>
+
+                <div v-if="isEcommerce" class="card border-1 mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title mb-1">Disable website indexing</h6>
+                                <p class="text-muted small mb-0">Prevent search engines from indexing your website pages</p>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input v-model="disableIndex" class="form-check-input" type="checkbox" id="disableIndex">
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -294,7 +336,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router' // Import useRouter
 import axios from 'axios'
 import { route as ziggyRoute } from 'ziggy-js'
@@ -312,6 +354,8 @@ const isDeleting = ref(false) // Trạng thái loading cho nút delete
 const websiteId = ref(null) // Biến để lưu trữ websiteId
 
 const websiteName = ref('')
+const siteType = ref(1)
+const isEcommerce = computed(() => Number(siteType.value) === 2)
 const showDarkMode = ref(true)
 const hideFooter = ref(false)
 const hideHeader = ref(false)
@@ -322,6 +366,9 @@ const textCenter = ref(false)
 const showAboutUs = ref(true)
 const showFeedbackForm = ref(false)
 const fontSize = ref(false)
+const disableDetailPage = ref(false)
+const disableIndex = ref(false)
+const disableBanner = ref(false)
 const fontFamily = ref('Poppins')
 const paginationSize = ref(10)
 const publishWebsite = ref(true)
@@ -344,6 +391,7 @@ const fetchWebsiteInfo = async () => {
         const response = await axios.get(ziggyRoute('api.sites.show', { id }));
 
         if (response.data) {
+            siteType.value = response.data.type ?? 1;
             websiteName.value = response.data.name || '';
             showDarkMode.value = response.data.dark_mode == 1 || false;
             hideFooter.value = response.data.hide_footer == 2 || false;
@@ -355,6 +403,9 @@ const fetchWebsiteInfo = async () => {
             showAboutUs.value = response.data.about_us == 1 || false;
             showFeedbackForm.value = response.data.feedback_form == 1 || false;
             fontSize.value = response.data.small_hero == 1 || false; // Dựa trên response.data.small_hero
+            disableDetailPage.value = response.data.disable_detail_page == 1 || false;
+            disableIndex.value = response.data.disable_index == 1 || false;
+            disableBanner.value = response.data.disable_banner == 1 || false;
             fontFamily.value = response.data.font_family || 'Poppins';
             paginationSize.value = response.data.pagination_size || 10;
             publishWebsite.value = response.data.published == 1 || false;
@@ -406,6 +457,12 @@ const updateSettings = async () => {
             build_on_sheetany: buildOnSheetany.value ? 1 : 2,
             grid_content: gridContent.value,
         };
+
+        if (isEcommerce.value) {
+            payload.disable_detail_page = disableDetailPage.value ? 1 : 2;
+            payload.disable_index = disableIndex.value ? 1 : 2;
+            payload.disable_banner = disableBanner.value ? 1 : 2;
+        }
 
         const response = await axios.put(ziggyRoute('api.sites.setting.update', { site: websiteId.value }), payload);
 
