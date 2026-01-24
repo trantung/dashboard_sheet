@@ -21,7 +21,7 @@
                     <div class="flex-grow-1">
                         <h6 class="card-title mb-2">Subdomain</h6>
                         <p class="text-muted small mb-0">
-                            Your <strong>*.microgem.io.vn</strong> subdomain.<br>
+                            Your <strong>*.ieltscheckmate.edu.vn</strong> subdomain.<br>
                             You can easily update it here.
                         </p>
                     </div>
@@ -43,7 +43,7 @@
                             :class="{ 'is-invalid': subdomainError }"
                             @input="validateSubdomain"
                         >
-                        <span class="input-group-text text-muted bg-light">.microgem.io.vn</span>
+                        <span class="input-group-text text-muted bg-light">.ieltscheckmate.edu.vn</span>
                         <button 
                             class="btn btn-success" 
                             @click="updateSubdomain" 
@@ -68,7 +68,7 @@
                                     :class="{ 'is-invalid': subdomainError }"
                                     @input="validateSubdomain"
                                 >
-                                <span class="input-group-text text-muted bg-light small">.microgem.io.vn</span>
+                                <span class="input-group-text text-muted bg-light small">.ieltscheckmate.edu.vn</span>
                             </div>
                             <div v-if="subdomainError" class="invalid-feedback d-block">
                                 {{ subdomainError }}
@@ -152,7 +152,7 @@ const subdomainError = ref('');
 // Function to extract subdomain
 const extractSubdomain = (fullDomain) => {
     if (fullDomain) {
-        const parts = fullDomain.split('.microgem.io.vn');
+        const parts = fullDomain.split('.ieltscheckmate.edu.vn');
         if (parts.length > 0 && parts[0]) {
             return parts[0];
         }
@@ -218,7 +218,7 @@ const updateSubdomain = async () => {
             subdomain.value = extractSubdomain(response.data.domain_name); 
             notificationAlert.value?.showSuccess('Subdomain updated successfully!');
         } else {
-            currentFullDomain.value = `${value}.microgem.io.vn`;
+            currentFullDomain.value = `${value}.ieltscheckmate.edu.vn`;
             notificationAlert.value?.showSuccess('Subdomain updated successfully!');
         }
     } catch (error) {

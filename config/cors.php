@@ -4,7 +4,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://sheetdashboard.microgem.io.vn'], // ? DOMAIN FRONTEND
+    'allowed_origins' => ['https://sheetever.io.vn'], // ? DOMAIN FRONTEND
 
     'allowed_origins_patterns' => [],
 

@@ -14,9 +14,9 @@ class ApiTestController extends Controller
         $apiToken = getenv('CLOUD_FLARE_API_TOKEN');
         $ip = getenv('SERVER_IP_ADDRESS');                            // <-- IP mà subdomain trỏ đến
         // ✅ Người dùng nhập vào tên đầy đủ subdomain và IP muốn trỏ đến
-        // $fullDomain = 'tenant123.microgem.io.vn';
+        // $fullDomain = 'tenant123.ieltscheckmate.edu.vn';
         $fullDomain = $request->full_domain;
-        [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, 'microgem.io.vn');
+        [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, 'ieltscheckmate.edu.vn');
         $zoneId = $this->getZoneIdByDomain($apiToken, $domain);
 
         if (!$zoneId) {
@@ -33,7 +33,7 @@ class ApiTestController extends Controller
 
 
     // B1: Tách subdomain và domain chính
-    public function extractSubdomainAndDomain($fullDomain, $domainRoot = 'microgem.io.vn') {
+    public function extractSubdomainAndDomain($fullDomain, $domainRoot = 'ieltscheckmate.edu.vn') {
         if (!str_ends_with($fullDomain, $domainRoot)) {
             throw new Exception("Tên miền không khớp với domain chính ($domainRoot)");
         }

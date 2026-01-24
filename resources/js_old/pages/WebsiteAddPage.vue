@@ -197,7 +197,7 @@
                             <div class="input-group">
                                 <span class="input-group-text">https://</span>
                                 <input v-model="subdomain" type="text" class="form-control" placeholder="testweb">
-                                <span class="input-group-text text-muted">.microgem.io.vn</span>
+                                <span class="input-group-text text-muted">.ieltscheckmate.edu.vn</span>
                             </div>
                         </div>
                     </div>

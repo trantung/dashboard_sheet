@@ -73,7 +73,7 @@
                 </p>
                 <div class="bg-light p-3 rounded position-relative">
                     <code class="small text-dark d-block text-break">
-                        &lt;iframe src="https://testweb.microgem.io.vn" width="100%" height="100%" frameborder="0" allowfullscreen&gt;&lt;/iframe&gt;
+                        &lt;iframe src="https://testweb.ieltscheckmate.edu.vn" width="100%" height="100%" frameborder="0" allowfullscreen&gt;&lt;/iframe&gt;
                     </code>
                     <button class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-2 d-none d-md-block" 
                             @click="copyEmbedCode">
@@ -132,7 +132,7 @@ const isUrl = (string) => {
 }
 
 const copyEmbedCode = async () => {
-    const embedCode = '<iframe src="https://testweb.microgem.io.vn" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>';
+    const embedCode = '<iframe src="https://testweb.ieltscheckmate.edu.vn" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>';
     try {
         await navigator.clipboard.writeText(embedCode);
         notificationAlert.value?.showSuccess('Embed code copied to clipboard!');

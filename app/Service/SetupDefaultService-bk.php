@@ -8,9 +8,9 @@ class SetupDefaultService extends Model
     {
         $apiToken = getenv('CLOUD_FLARE_API_TOKEN');
         $ip = getenv('SERVER_IP_ADDRESS');
-        // $fullDomain = 'tenant123.microgem.io.vn'
+        // $fullDomain = 'tenant123.ieltscheckmate.edu.vn'
         // $fullDomain = $data['full_domain'];
-        [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, 'microgem.io.vn');
+        [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, 'ieltscheckmate.edu.vn');
         $zoneId = $this->getZoneIdByDomain($apiToken, $domain);
         if (!$zoneId) {
             throw new Exception("Không tìm thấy Zone ID cho $domain");
@@ -20,7 +20,7 @@ class SetupDefaultService extends Model
         return $responseDecode;
     }
 
-    public function extractSubdomainAndDomain($fullDomain, $domainRoot = 'microgem.io.vn') {
+    public function extractSubdomainAndDomain($fullDomain, $domainRoot = 'ieltscheckmate.edu.vn') {
         if (!str_ends_with($fullDomain, $domainRoot)) {
             throw new Exception("Tên miền không khớp với domain chính ($domainRoot)");
         }
