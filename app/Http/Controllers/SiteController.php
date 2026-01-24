@@ -171,7 +171,7 @@ class SiteController extends Controller
     //                 // Custom validation rule: Kiểm tra xem subdomain đã tồn tại chưa
     //                 // Ví dụ: tránh trùng lặp subdomain trên nền tảng của bạn
     //                 function ($attribute, $value, $fail) use ($site) {
-    //                     $fullDomain = $value . '.microgem.io.vn';
+    //                     $fullDomain = $value . '.' . DOMAIN_BASE;
     //                     // Giả định 'domain_name' là cột trong bảng 'sites'
     //                     if (Site::where('domain_name', $fullDomain)->where('id', '!=', $site->id)->exists()) {
     //                         $fail("The subdomain '{$value}' is already taken. Please choose another one.");
@@ -181,7 +181,7 @@ class SiteController extends Controller
     //         ]);
 
     //         $newSubdomain = $validatedData['subdomain'];
-    //         $baseDomain = '.microgem.io.vn'; // Đảm bảo base domain là cố định
+    //         $baseDomain = '.' . DOMAIN_BASE; // Đảm bảo base domain là cố định
     //         $old_domain = $site->domain_name;
     //         // 2. Tạo domain_name đầy đủ mới
     //         $newFullDomain = $newSubdomain . $baseDomain;
@@ -233,7 +233,7 @@ class SiteController extends Controller
                     'max:60',
                     'regex:/^[a-zA-Z0-9-]+$/',
                     function ($attribute, $value, $fail) use ($site) {
-                        $fullDomain = $value . '.microgem.io.vn';
+                        $fullDomain = $value . '.' . DOMAIN_BASE;
                         if (Site::where('domain_name', $fullDomain)->where('id', '!=', $site->id)->exists()) {
                             $fail("The subdomain '{$value}' is already taken. Please choose another one.");
                         }
@@ -242,7 +242,7 @@ class SiteController extends Controller
             ]);
 
             $newSubdomain = $validatedData['subdomain'];
-            $baseDomain = '.microgem.io.vn';
+            $baseDomain = '.' . DOMAIN_BASE;
             $oldDomain = $site->domain_name;
             $newFullDomain = $newSubdomain . $baseDomain;
 

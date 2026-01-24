@@ -15,8 +15,7 @@ class SetupDefaultService
         try {
             $apiToken = getenv('CLOUD_FLARE_API_TOKEN');
             $ip = getenv('SERVER_IP_ADDRESS');
-
-            [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, 'microgem.io.vn');
+            [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, DOMAIN_BASE);
             $zoneId = $this->getZoneIdByDomain($apiToken, $domain);
 
             if (!$zoneId) {
@@ -27,10 +26,6 @@ class SetupDefaultService
             }
 
             $response = $this->createSubdomainOnCloudflare($apiToken, $zoneId, $sub, $domain, $ip);
-            
-            // Purge Cloudflare DNS cache to speed up DNS propagation
-            $this->purgeCloudflareDNSCache($fullDomain);
-            
             // $projectPath = '/var/www/html/sheetany_blog/dist';
             $vhostResult = $this->addApacheVirtualHost($fullDomain, $projectPath, $portProject);
 
@@ -52,7 +47,7 @@ class SetupDefaultService
         }
     }
 
-    public function extractSubdomainAndDomain($fullDomain, $domainRoot = 'microgem.io.vn')
+    public function extractSubdomainAndDomain($fullDomain, $domainRoot = DOMAIN_BASE)
     {
         if (!str_ends_with($fullDomain, $domainRoot)) {
             throw new Exception("The domain name does not match the root domain ({$domainRoot})");
@@ -103,115 +98,6 @@ class SetupDefaultService
         return $response;
     }
 
-    /**
-     * Purge Cloudflare DNS cache to speed up DNS propagation
-     * This helps Let's Encrypt see the new DNS record immediately
-     */
-    private function purgeCloudflareDNSCache($domain)
-    {
-        try {
-            $purgeUrl = "https://cloudflare-dns.com/purge?name={$domain}&type=A";
-            $ch = curl_init($purgeUrl);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            
-            Log::info("Purged Cloudflare DNS cache", [
-                'domain' => $domain,
-                'http_code' => $httpCode,
-                'response' => $response
-            ]);
-            
-            return $httpCode === 200;
-        } catch (\Exception $e) {
-            Log::warning("Failed to purge Cloudflare DNS cache: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Enable Cloudflare proxy (orange cloud) after SSL certificate is created
-     */
-    public function enableCloudflareProxy($fullDomain, $apiToken)
-    {
-        try {
-            [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, 'microgem.io.vn');
-            $zoneId = $this->getZoneIdByDomain($apiToken, $domain);
-            
-            if (!$zoneId) {
-                Log::error("Could not find Zone ID for enabling proxy", ['domain' => $domain]);
-                return false;
-            }
-            
-            // Get DNS record ID
-            $recordId = $this->getCloudflareDNSRecordId($fullDomain, $apiToken, $zoneId);
-            
-            if (!$recordId) {
-                Log::error("Could not find DNS record ID for enabling proxy", ['domain' => $fullDomain]);
-                return false;
-            }
-            
-            // Update DNS record to enable proxy
-            $url = "https://api.cloudflare.com/client/v4/zones/{$zoneId}/dns_records/{$recordId}";
-            
-            $updateData = [
-                "proxied" => true
-            ];
-            
-            $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                "Authorization: Bearer {$apiToken}",
-                "Content-Type: application/json"
-            ]);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PATCH");
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($updateData));
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            
-            $data = json_decode($response, true);
-            
-            if ($data['success'] ?? false) {
-                Log::info("Enabled Cloudflare proxy for domain", [
-                    'domain' => $fullDomain,
-                    'http_code' => $httpCode
-                ]);
-                return true;
-            } else {
-                Log::error("Failed to enable Cloudflare proxy", [
-                    'domain' => $fullDomain,
-                    'response' => $data
-                ]);
-                return false;
-            }
-        } catch (\Exception $e) {
-            Log::error("Exception when enabling Cloudflare proxy: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    private function getCloudflareDNSRecordId($domain, $token, $zoneId)
-    {
-        $url = "https://api.cloudflare.com/client/v4/zones/{$zoneId}/dns_records?type=A&name={$domain}";
-
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => [
-                "Authorization: Bearer {$token}",
-                "Content-Type: application/json"
-            ]
-        ]);
-        $response = curl_exec($ch);
-        curl_close($ch);
-
-        $data = json_decode($response, true);
-        return $data['success'] && !empty($data['result']) ? $data['result'][0]['id'] : null;
-    }
-
     public function addApacheVirtualHost($domain, $projectPath, $portProject = 3001)
     {
         try {
@@ -240,11 +126,12 @@ class SetupDefaultService
                     'message' => "Unable to create configuration file (possibly due to missing sudo permissions)."
                 ];
             }
+
             // Enable the virtual host
             exec("sudo a2ensite {$domain}.conf", $out1, $c1);
 
             // Ensure SSL configuration exists
-            $this->ensureSSLConfig($domain);
+            $this->ensureSSLConfig($domain, $portProject);
 
             // Reload Apache
             exec("sudo systemctl reload apache2", $out3, $c2);
@@ -271,122 +158,160 @@ class SetupDefaultService
         }
     }
 
-    public function ensureSSLConfig($domain)
+    public function ensureSSLConfig($domain, $portProject = 3001)
     {
         try {
             $sslConfPath = "/etc/apache2/sites-available/{$domain}-le-ssl.conf";
-            $domainEscaped = escapeshellarg($domain);
-            $emailEscaped = escapeshellarg("admin@$domain");
-
-            // Viết lệnh rõ ràng từng tham số
-            $certbotCmd = "sudo certbot --apache -d $domainEscaped --non-interactive --agree-tos -m $emailEscaped --redirect 2>&1";
-
-            exec($certbotCmd, $output, $returnCode);
-
+            $httpConfPath = "/etc/apache2/sites-available/{$domain}.conf";
+            $certDir = "/etc/letsencrypt/live/{$domain}";
             $reloadCmd = "sudo systemctl reload apache2";
 
-            // Nếu SSL đã tồn tại, không cần tạo lại
-            if (file_exists($sslConfPath)) {
-                Log::info("SSL already exists for {$domain}");
+            // Helper function để check file/directory bằng sudo (vì cert được tạo bởi root)
+            $checkFile = function($path) {
+                exec("sudo test -f " . escapeshellarg($path) . " && echo 'exists' || echo 'not_exists'", $checkOutput, $checkCode);
+                $result = !empty($checkOutput) && $checkOutput[0] === 'exists';
+                return $result;
+            };
+            $checkDir = function($path) {
+                exec("sudo test -d " . escapeshellarg($path) . " && echo 'exists' || echo 'not_exists'", $checkOutput, $checkCode);
+                $result = !empty($checkOutput) && $checkOutput[0] === 'exists';
+                Log::info("Checking directory {$path}: " . ($result ? 'exists' : 'not_exists') . " (output: " . json_encode($checkOutput) . ")");
+                return $result;
+            };
+
+            // Nếu file ssl config đã tồn tại và cert cũng đã có thì bỏ qua
+            if ($checkFile($sslConfPath) && $checkDir($certDir)) {
+                Log::info("SSL config and certificate already exist for {$domain}");
                 return;
             }
 
-            // Kiểm tra domain đã được public DNS resolve chưa
-            // Sử dụng Cloudflare DNS (1.1.1.1) để check vì Let's Encrypt thường dùng DNS này
-            $maxAttempts = 8; // Giảm số lần thử vì đã purge cache
-            $delaySeconds = 5; // Giảm delay vì DNS đã được purge
-            $resolved = false;
-            $cloudflareDnsServer = '1.1.1.1'; // Cloudflare DNS (Let's Encrypt thường dùng)
+            // Đảm bảo cert đã tồn tại, nếu chưa thì mới chạy certbot
+            $certExists = $checkDir($certDir)
+                && $checkFile($certDir . '/fullchain.pem')
+                && $checkFile($certDir . '/privkey.pem');
 
-            for ($i = 0; $i < $maxAttempts; $i++) {
-                // Check với Cloudflare DNS server (1.1.1.1) - Let's Encrypt thường dùng DNS này
-                $digCommand = "dig @{$cloudflareDnsServer} +short {$domain} A 2>&1";
-                exec($digCommand, $digOutput, $digCode);
-                $cloudflareDnsResolved = !empty($digOutput) && !empty(trim(implode('', $digOutput)));
-                
-                // Also check local DNS
-                $dns = dns_get_record($domain, DNS_A);
-                
-                if ($cloudflareDnsResolved && !empty($dns)) {
-                    $resolved = true;
-                    Log::info("DNS resolved for {$domain}", [
-                        'cloudflare_dns' => trim(implode('', $digOutput)),
-                        'local_dns' => $dns,
-                        'attempt' => $i + 1
-                    ]);
-                    break;
-                } else {
-                    $status = [
-                        'cloudflare_dns' => $cloudflareDnsResolved ? trim(implode('', $digOutput)) : 'not resolved',
-                        'local_dns' => !empty($dns) ? 'resolved' : 'not resolved',
-                        'attempt' => $i + 1
-                    ];
-                    Log::info("Waiting for DNS to resolve for {$domain}", $status);
-                    sleep($delaySeconds);
+            if (!$certExists) {
+                // Kiểm tra domain đã được public DNS resolve chưa
+                $maxAttempts = 10;
+                $delaySeconds = 10;
+                $resolved = false;
+
+                for ($i = 0; $i < $maxAttempts; $i++) {
+                    $dns = dns_get_record($domain, DNS_A);
+                    if (!empty($dns)) {
+                        $resolved = true;
+                        Log::info("DNS resolved for {$domain}: " . json_encode($dns));
+                        break;
+                    } else {
+                        Log::info("Waiting for DNS to resolve for {$domain}... attempt " . ($i + 1));
+                        sleep($delaySeconds);
+                    }
                 }
-            }
 
-            if (!$resolved) {
-                Log::error("DNS not resolved for {$domain} after {$maxAttempts} attempts", [
-                    'max_attempts' => $maxAttempts,
-                    'delay_seconds' => $delaySeconds,
-                    'dns_server' => $cloudflareDnsServer
-                ]);
-                return;
-            }
-            
-            // Additional short wait to ensure DNS is fully propagated
-            Log::info("DNS resolved on Cloudflare DNS, waiting 3 seconds for full propagation");
-            sleep(3);
+                if (!$resolved) {
+                    Log::error("DNS not resolved for {$domain} after {$maxAttempts} attempts");
+                    return;
+                }
 
-            // Thử chạy certbot để cấp SSL
-            exec($certbotCmd . " 2>&1", $output, $code);
-            Log::info("Certbot output for {$domain}", [
-                'output' => $output,
-                'exit_code' => $code
-            ]);
+                // Thử chạy certbot để cấp SSL (chỉ lo phần cert, không phụ thuộc vào việc nó tạo vhost hay không)
+                $certbotCmd = escapeshellcmd("sudo certbot --apache -d {$domain} --non-interactive --agree-tos -m admin@{$domain} --redirect");
 
-            // Check if SSL config file was created (even if exit code is non-zero)
-            // Exit code 120 often indicates BrokenPipeError but certificate might be created successfully
-            $sslCreated = file_exists($sslConfPath);
-            
-            if ($code !== 0 && !$sslCreated) {
-                // Only treat as failure if exit code is non-zero AND SSL config file doesn't exist
-                Log::error("Certbot failed for {$domain}", [
-                    'exit_code' => $code,
-                    'output' => $output,
-                    'ssl_file_exists' => false
-                ]);
-                return;
-            }
+                exec($certbotCmd . " 2>&1", $output, $code);
+                Log::info("Certbot output for {$domain}:", $output);
 
-            // If SSL config file exists, treat as success (even with non-zero exit code)
-            // This handles cases where certbot succeeds but has broken pipe error (code 120)
-            if ($sslCreated) {
                 if ($code !== 0) {
-                    Log::warning("Certbot completed but with exit code {$code} (possibly broken pipe)", [
-                        'domain' => $domain,
-                        'exit_code' => $code,
-                        'ssl_file_exists' => true
-                    ]);
+                    // Một số trường hợp certbot vẫn cấp SSL thành công nhưng trả về mã lỗi
+                    Log::warning("Certbot exited with non-zero code {$code} for {$domain}");
                 }
+
+                // Đợi và retry để certbot hoàn tất việc tạo file (có thể mất vài giây)
+                $maxRetries = 10;
+                $retryDelay = 2;
+                $certExists = false;
+
+                for ($retry = 0; $retry < $maxRetries; $retry++) {
+                    sleep($retryDelay);
+
+                    // Cập nhật lại trạng thái cert (dùng sudo để check vì file được tạo bởi root)
+                    $certExists = $checkDir($certDir)
+                        && $checkFile($certDir . '/fullchain.pem')
+                        && $checkFile($certDir . '/privkey.pem');
+
+                    if ($certExists) {
+                        Log::info("Certificate files confirmed for {$domain} after " . (($retry + 1) * $retryDelay) . " seconds");
+                        break;
+                    } else {
+                        Log::info("Waiting for certificate files for {$domain}... retry " . ($retry + 1) . "/{$maxRetries}");
+                    }
+                }
+
+                // Nếu sau khi chờ vẫn không detect được file cert (do hạn chế sudo, quyền, v.v.)
+                // thì chỉ log cảnh báo, KHÔNG return; vẫn tiếp tục tạo ssl.conf và reload Apache.
+                if (!$certExists) {
+                    Log::warning("Certificate files COULD NOT be verified for {$domain} after running certbot and waiting " . ($maxRetries * $retryDelay) . " seconds, continuing to create SSL vhost anyway.");
+                }
+            }
+
+            // Đến đây chắc chắn cert đã tồn tại, nếu chưa có ssl conf thì tự tạo
+            if (!$checkFile($sslConfPath)) {
+                // Lấy portProject từ file http vhost ({$domain}.conf)
+                if ($checkFile($httpConfPath)) {
+                // Thêm sudo vào lệnh cat
+                exec("sudo /usr/bin/cat " . escapeshellarg($httpConfPath), $confLines, $catCode);
                 
+                if ($catCode === 0) {
+                    $confContent = implode("\n", $confLines);
+                    // Regex nên linh hoạt hơn (phòng trường hợp khoảng trắng khác nhau)
+                    if (preg_match('/ProxyPass\s+\/\s+http:\/\/localhost:(\d+)\/?/', $confContent, $matches)) {
+                        $portProject = $matches[1];
+                        Log::info("Found port for {$domain}: {$portProject}");
+                    }
+                } else {
+                    Log::error("Failed to cat config file for {$domain}. Code: {$catCode}");
+                }
+            }
+
+                $sslVhostConfig = <<<EOL
+                <IfModule mod_ssl.c>
+                    <VirtualHost *:443>
+                        ServerName {$domain}
+                        ErrorLog \${APACHE_LOG_DIR}/{$domain}_ssl_error.log
+                        CustomLog \${APACHE_LOG_DIR}/{$domain}_ssl_access.log combined
+                        SSLEngine on
+                        SSLCertificateFile /etc/letsencrypt/live/{$domain}/fullchain.pem
+                        SSLCertificateKeyFile /etc/letsencrypt/live/{$domain}/privkey.pem
+                        ProxyPreserveHost On
+                        ProxyRequests Off
+                        ProxyPass / http://localhost:{$portProject}/
+                        ProxyPassReverse / http://localhost:{$portProject}/
+                        RewriteEngine on
+                        RewriteCond %{HTTP:Upgrade} =websocket [NC]
+                        RewriteRule /(.*) ws://localhost:{$portProject}/\$1 [P,L]
+                    </VirtualHost>
+                </IfModule>
+                EOL;
+
+                $createSslCmd = "echo " . escapeshellarg($sslVhostConfig) . " | sudo tee {$sslConfPath} > /dev/null";
+                exec($createSslCmd, $sslOut, $sslCode);
+                if ($sslCode !== 0) {
+                    Log::error("Failed to create SSL VirtualHost config for {$domain}");
+                    return;
+                }
+
+                // Enable SSL site
+                exec("sudo a2ensite {$domain}-le-ssl.conf", $enableOut, $enableCode);
+                if ($enableCode !== 0) {
+                    Log::error("Failed to enable SSL site for {$domain}");
+                    return;
+                }
+            }
+            
+            // Nếu file ssl config đã tồn tại, reload Apache để áp dụng
+            if ($checkFile($sslConfPath)) {
                 exec($reloadCmd, $reloadOutput, $reloadCode);
-                Log::info("Apache reloaded for {$domain}", [
-                    'reload_exit_code' => $reloadCode,
-                    'output' => $reloadOutput
-                ]);
-                
-                // Enable Cloudflare proxy (orange cloud) after SSL is successfully created
-                // $apiToken = getenv('CLOUD_FLARE_API_TOKEN');
-                // if ($apiToken) {
-                //     $this->enableCloudflareProxy($domain, $apiToken);
-                // }
+                Log::info("Apache reloaded for {$domain} with SSL config");
             } else {
-                Log::warning("SSL config not found after certbot for {$domain}", [
-                    'exit_code' => $code,
-                    'output' => $output
-                ]);
+                Log::error("SSL config not found for {$domain} after processing");
             }
 
         } catch (\Exception $e) {
@@ -394,14 +319,13 @@ class SetupDefaultService
         }
     }
 
-
     //delete domain
     public function deleteDomain($request)
     {
         try {
             $apiToken = getenv('CLOUD_FLARE_API_TOKEN');
             $fullDomain = $request['full_domain'];
-            [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, 'microgem.io.vn');
+            [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, DOMAIN_BASE);
             $zoneId = $this->getZoneIdByDomain($apiToken, $domain);
             $result = $this->deleteApacheVirtualHostAndCloudflare($fullDomain, $apiToken, $zoneId);
             return response()->json([
@@ -485,6 +409,25 @@ class SetupDefaultService
                     : "Could not find or delete DNS record from Cloudflare."
             ]
         ];
+    }
+
+    private function getCloudflareDNSRecordId($domain, $token, $zoneId)
+    {
+        $url = "https://api.cloudflare.com/client/v4/zones/{$zoneId}/dns_records?type=A&name={$domain}";
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                "Authorization: Bearer {$token}",
+                "Content-Type: application/json"
+            ]
+        ]);
+        $response = curl_exec($ch);
+        curl_close($ch);
+
+        $data = json_decode($response, true);
+        return $data['success'] && !empty($data['result']) ? $data['result'][0]['id'] : null;
     }
 
     private function deleteCloudflareDNSRecord($recordId, $token, $zoneId)
