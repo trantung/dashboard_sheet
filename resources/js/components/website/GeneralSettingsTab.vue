@@ -92,28 +92,76 @@
                     </div>
                 </div>
 
-                <div class="card border-1 mb-4">
-                    <div class="card-body">
-                        <h6 class="card-title">Pagination Size</h6>
-                        <p class="text-muted small">Set the number of data items to display on the website. It should be
-                            between 10 and 50.</p>
-                        <input v-model="paginationSize" type="number" class="form-control" min="10" max="50"
-                            placeholder="10">
-                    </div>
-                </div>
-
-                <div class="card border-1 mb-4">
+                <div v-if="isEcommerce || isBlog" class="card border-1 mb-4">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="card-title mb-1">Publish website</h6>
-                                <p class="text-muted small mb-0">Publish your website to the internet</p>
+                                <h6 class="card-title mb-1">Detail page</h6>
+                                <p class="text-muted small mb-0">Hide the website detail page</p>
                             </div>
                             <div class="form-check form-switch">
-                                <input v-model="publishWebsite" class="form-check-input" type="checkbox"
-                                    id="publishWebsite">
+                                <input v-model="disableDetailPage" class="form-check-input" type="checkbox" id="disableDetailPage">
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div v-if="isEcommerce || isBlog" class="card border-1 mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title mb-1">Disable website indexing</h6>
+                                <p class="text-muted small mb-0">Prevent search engines from indexing your website pages</p>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input v-model="disableIndex" class="form-check-input" type="checkbox" id="disableIndex">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- <div v-if="isEcommerce" class="card border-1 mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title mb-1">Disable banner</h6>
+                                <p class="text-muted small mb-0">Hide the banner section on your website</p>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input v-model="disableBanner" class="form-check-input" type="checkbox" id="disableBanner">
+                            </div>
+                        </div>
+                    </div>
+                </div> -->
+
+                <div class="card border-1 mb-4">
+                    <div class="card-body">
+                        <h6 class="card-title">Font Family</h6>
+                        <p class="text-muted small">Display font for website</p>
+                        <select v-model="fontFamily" class="form-select">
+                            <option value="Arvo">Arvo</option>
+                            <option value="Cabin">Cabin</option>
+                            <option value="Droid Serif">Droid Serif</option>
+                            <option value="Fira Sans">Fira Sans</option>
+                            <option value="Inconsolata">Inconsolata</option>
+                            <option value="Inter">Inter</option>
+                            <option value="IBM Plex Sans Thai">IBM Plex Sans Thai</option>
+                            <option value="Lora">Lora</option>
+                            <option value="Merriweather">Merriweather</option>
+                            <option value="Montserrat">Montserrat</option>
+                            <option value="Manrope">Manrope</option>
+                            <option value="Noto Sans">Noto Sans</option>
+                            <option value="Nunito">Nunito</option>
+                            <option value="Open Sans">Open Sans</option>
+                            <option value="Playfair Display">Playfair Display</option>
+                            <option value="Poppins">Poppins</option>
+                            <option value="Public Sans">Public Sans</option>
+                            <option value="Quicksand">Quicksand</option>
+                            <option value="Raleway">Raleway</option>
+                            <option value="Roboto">Roboto</option>
+                            <option value="Source Sans Pro">Source Sans Pro</option>
+                            <option value="Ubuntu">Ubuntu</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -206,6 +254,20 @@
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
+                                <h6 class="card-title mb-1">Table of Content</h6>
+                                <p class="text-muted small mb-0">Hide the table of content on detail pages</p>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input v-model="disableTOC" class="form-check-input" type="checkbox" id="disableTOC">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-1 mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
                                 <h6 class="card-title mb-1">Font size</h6>
                                 <p class="text-muted small mb-0">Display small text title</p>
                             </div>
@@ -216,38 +278,7 @@
                     </div>
                 </div>
 
-                <div class="card border-1 mb-4">
-                    <div class="card-body">
-                        <h6 class="card-title">Font Family</h6>
-                        <p class="text-muted small">Display font for website</p>
-                        <select v-model="fontFamily" class="form-select">
-                            <option value="Arvo">Arvo</option>
-                            <option value="Cabin">Cabin</option>
-                            <option value="Droid Serif">Droid Serif</option>
-                            <option value="Fira Sans">Fira Sans</option>
-                            <option value="Inconsolata">Inconsolata</option>
-                            <option value="Inter">Inter</option>
-                            <option value="IBM Plex Sans Thai">IBM Plex Sans Thai</option>
-                            <option value="Lora">Lora</option>
-                            <option value="Merriweather">Merriweather</option>
-                            <option value="Montserrat">Montserrat</option>
-                            <option value="Manrope">Manrope</option>
-                            <option value="Noto Sans">Noto Sans</option>
-                            <option value="Nunito">Nunito</option>
-                            <option value="Open Sans">Open Sans</option>
-                            <option value="Playfair Display">Playfair Display</option>
-                            <option value="Poppins">Poppins</option>
-                            <option value="Public Sans">Public Sans</option>
-                            <option value="Quicksand">Quicksand</option>
-                            <option value="Raleway">Raleway</option>
-                            <option value="Roboto">Roboto</option>
-                            <option value="Source Sans Pro">Source Sans Pro</option>
-                            <option value="Ubuntu">Ubuntu</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="card border-1 mb-4">
+                <div v-if="isBlog" class="card border-1 mb-4">
                     <div class="card-body">
                         <h6 class="card-title">Grid content</h6>
                         <p class="text-muted small">Display the number of content columns</p>
@@ -255,6 +286,31 @@
                             <option value="2">2 columns</option>
                             <option value="3">3 columns</option>
                         </select>
+                    </div>
+                </div>
+
+                <div class="card border-1 mb-4">
+                    <div class="card-body">
+                        <h6 class="card-title">Pagination Size</h6>
+                        <p class="text-muted small">Set the number of data items to display on the website. It should be
+                            between 10 and 50.</p>
+                        <input v-model="paginationSize" type="number" class="form-control" min="10" max="50"
+                            placeholder="10">
+                    </div>
+                </div>
+                
+                <div class="card border-1 mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title mb-1">Publish website</h6>
+                                <p class="text-muted small mb-0">Publish your website to the internet</p>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input v-model="publishWebsite" class="form-check-input" type="checkbox"
+                                    id="publishWebsite">
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -294,7 +350,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router' // Import useRouter
 import axios from 'axios'
 import { route as ziggyRoute } from 'ziggy-js'
@@ -312,6 +368,9 @@ const isDeleting = ref(false) // Trạng thái loading cho nút delete
 const websiteId = ref(null) // Biến để lưu trữ websiteId
 
 const websiteName = ref('')
+const siteType = ref(1)
+const isBlog = computed(() => Number(siteType.value) === 1)
+const isEcommerce = computed(() => Number(siteType.value) === 2)
 const showDarkMode = ref(true)
 const hideFooter = ref(false)
 const hideHeader = ref(false)
@@ -322,6 +381,10 @@ const textCenter = ref(false)
 const showAboutUs = ref(true)
 const showFeedbackForm = ref(false)
 const fontSize = ref(false)
+const disableDetailPage = ref(false)
+const disableIndex = ref(false)
+// const disableBanner = ref(false)
+const disableTOC = ref(false)
 const fontFamily = ref('Poppins')
 const paginationSize = ref(10)
 const publishWebsite = ref(true)
@@ -344,6 +407,7 @@ const fetchWebsiteInfo = async () => {
         const response = await axios.get(ziggyRoute('api.sites.show', { id }));
 
         if (response.data) {
+            siteType.value = response.data.type ?? 1;
             websiteName.value = response.data.name || '';
             showDarkMode.value = response.data.dark_mode == 1 || false;
             hideFooter.value = response.data.hide_footer == 2 || false;
@@ -355,11 +419,15 @@ const fetchWebsiteInfo = async () => {
             showAboutUs.value = response.data.about_us == 1 || false;
             showFeedbackForm.value = response.data.feedback_form == 1 || false;
             fontSize.value = response.data.small_hero == 1 || false; // Dựa trên response.data.small_hero
+            disableDetailPage.value = response.data.disable_detail_page == 1 || false;
+            disableIndex.value = response.data.disable_index == 1 || false;
+            disableTOC.value = response.data.disable_toc == 1 || false;
+            // disableBanner.value = response.data.disable_banner == 1 || false;
             fontFamily.value = response.data.font_family || 'Poppins';
             paginationSize.value = response.data.pagination_size || 10;
             publishWebsite.value = response.data.published == 1 || false;
-            buildOnSheetany.value = response.data.build_on_sheetany == 1 || false; // Thêm vào đây nếu có trong API response
-            gridContent.value = response.data.grid_content || 3;
+            buildOnSheetany.value = response.data.build_on_sheetany == 1 || false;
+            gridContent.value = response.data.grid_content || 2;
 
             notificationAlert.value?.showSuccess('Website information loaded successfully.');
         } else {
@@ -405,7 +473,14 @@ const updateSettings = async () => {
             published: publishWebsite.value ? 1 : 2,
             build_on_sheetany: buildOnSheetany.value ? 1 : 2,
             grid_content: gridContent.value,
+            disable_detail_page: disableDetailPage.value ? 1 : 2,
+            disable_index: disableIndex.value ? 1 : 2,
+            disable_toc: disableTOC.value ? 1 : 2,
         };
+
+        if (isEcommerce.value) {
+            // payload.disable_banner = disableBanner.value ? 1 : 2;
+        }
 
         const response = await axios.put(ziggyRoute('api.sites.setting.update', { site: websiteId.value }), payload);
 

@@ -241,21 +241,22 @@ class DatabaseDefaultService
     public function saveContentSheetEcomerce($rows, $db_name, $apiKey, $defaultSheetId)
     {
         $arrayCheck = [
-            0  => "SKU",
-            1  => "Name",
-            2  => "Inventory",
-            3  => "Price",
-            4  => "Old Price",
-            5  => "Link",
-            6  => "Size",
-            7  => "Color",
-            8  => "Material",
-            9  => "Categories",
-            10 => "Description",
-            11 => "Rating",
-            12 => "Best selling",
-            13 => "New Arrival",
-            14 => "Image",
+            0 => "SKU",
+            1 => "Name",
+            2 => "Inventory",
+            3 => "Price",
+            4 => "Old Price",
+            5 => "Link",
+            6 => "Size",
+            7 => "Color",
+            8 => "Categories",
+            9 => "Description",
+            10 => "Best selling",
+            11 => "New Arrival",
+            12 => "Image",
+            13 => "Image 1",
+            14 => "Image 2",
+            15 => "Image 3"
         ];
         $checkContentSheetName = $this->checkColumnNameSheet($arrayCheck, $rows[0]);
 
@@ -312,29 +313,22 @@ class DatabaseDefaultService
                     case 7:  // Color
                         $item['color'] = $v;
                         break;
-                    case 8:  // Material
-                        $item['material'] = $v;
-                        break;
-                    case 9:  // Categories (dùng cho bảng category)
+                    case 8:  // Categories (dùng cho bảng category)
                         $item['categories'] = $v;
                         break;
-                    case 10: // Description
+                    case 9:  // Description
                         $item['description'] = $v;
                         break;
-                    case 11: // Rating
-                        $item['rating'] = $v;
-                        break;
-                    case 12: // Best selling
+                    case 10: // Best selling
                         $item['best_selling'] = $v;
                         break;
-                    case 13: // New Arrival
+                    case 11: // New Arrival
                         $item['new_arrival'] = $v;
                         break;
-                    case 14: // Image chính
-                    case 15: // Image phụ 1
-                    case 16: // Image phụ 2
-                    case 17: // Image phụ 3
-                    case 18: // Image phụ 4 / Pinterest
+                    case 12: // Image chính
+                    case 13: // Image 1
+                    case 14: // Image 2
+                    case 15: // Image 3
                         if (trim((string) $v) !== '') {
                             $images[] = $v;
                         }

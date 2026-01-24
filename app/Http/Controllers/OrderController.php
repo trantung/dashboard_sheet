@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Site;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\Response;
@@ -14,90 +17,59 @@ class OrderController extends Controller
     /**
      * Get all orders with pagination
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, Site $site): JsonResponse
     {
         try {
+            if ($site->workspace->user_id !== Auth::id()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
             $perPage = $request->get('per_page', 10);
             $page = $request->get('page', 1);
-            
-            // Sample data - replace with actual database query
-            $allOrders = [
-                [
-                    'id' => '56038079',
-                    'name' => 'Kiên Ph?m',
-                    'email' => 'admin@admin.com',
-                    'phone' => '0394859392',
-                    'address' => 'tran phu, hoang mai',
-                    'subtotal' => 200.00,
-                    'discount_coupon' => '',
-                    'discount' => 0,
-                    'shipping' => 30.00,
-                    'total' => 230.00,
-                    'status' => 'new',
-                    'note' => '',
-                    'currency' => '$',
-                    'products' => [
-                        [
-                            'sku' => '789-07',
-                            'name' => 'Sesame Street Ut',
-                            'quantity' => 1,
-                            'price' => 200.00
-                        ]
-                    ]
-                ],
-                [
-                    'id' => '56038080',
-                    'name' => 'John Doe',
-                    'email' => 'john@example.com',
-                    'phone' => '0123456789',
-                    'address' => 'New York, USA',
-                    'subtotal' => 150.00,
-                    'discount_coupon' => 'SAVE10',
-                    'discount' => 15.00,
-                    'shipping' => 25.00,
-                    'total' => 160.00,
-                    'status' => 'processing',
-                    'note' => 'Express delivery',
-                    'currency' => '$',
-                    'products' => [
-                        [
-                            'sku' => '123-45',
-                            'name' => 'Product Sample',
-                            'quantity' => 2,
-                            'price' => 75.00
-                        ]
-                    ]
-                ],
-                [
-                    'id' => '56038081',
-                    'name' => 'Jane Smith',
-                    'email' => 'jane@example.com',
-                    'phone' => '0987654321',
-                    'address' => 'London, UK',
-                    'subtotal' => 300.00,
-                    'discount_coupon' => '',
-                    'discount' => 0,
-                    'shipping' => 40.00,
-                    'total' => 340.00,
-                    'status' => 'completed',
-                    'note' => '',
-                    'currency' => '$',
-                    'products' => [
-                        [
-                            'sku' => '456-78',
-                            'name' => 'Premium Item',
-                            'quantity' => 1,
-                            'price' => 300.00
-                        ]
-                    ]
-                ]
-            ];
 
-            $total = count($allOrders);
+            $perPage = max(1, (int) $perPage);
+            $page = max(1, (int) $page);
+
+            $domainName = $site->domain_name;
+            $dbName = str_replace('.' . DOMAIN_BASE, '', $domainName);
+            if (!empty($site->db_name)) {
+                $dbName = $site->db_name;
+            }
+            $connectionName = setupTenantConnection($dbName);
+
+            $query = DB::connection($connectionName)
+                ->table('orders')
+                ->orderBy('id', 'desc');
+
+            $total = (clone $query)->count();
             $offset = ($page - 1) * $perPage;
-            $orders = array_slice($allOrders, $offset, $perPage);
-            
-            $lastPage = ceil($total / $perPage);
+            $rawOrders = $query
+                ->offset($offset)
+                ->limit($perPage)
+                ->get();
+
+            $orders = $rawOrders->map(function ($order) {
+                return [
+                    'id' => $order->id,
+                    'order_no' => $order->order_no,
+                    'name' => $order->name,
+                    'email' => $order->email,
+                    'phone' => $order->phone,
+                    'address' => $order->address,
+                    'subtotal' => floatval($order->subtotal ?? 0),
+                    'discount_coupon' => $order->discount_coupon ?? '',
+                    'discount' => floatval($order->discount ?? 0),
+                    'shipping' => floatval($order->shipping ?? 0),
+                    'total' => floatval($order->total ?? 0),
+                    'status' => $this->mapOrderStatus($order->status ?? 0),
+                    'note' => $order->note ?? '',
+                    'currency' => $order->currency ?? '$',
+                    'created_at' => $order->created_at,
+                    'updated_at' => $order->updated_at,
+                ];
+            })->toArray();
+
+            $lastPage = (int) ceil($total / $perPage);
 
             return response()->json([
                 'success' => true,
@@ -122,37 +94,69 @@ class OrderController extends Controller
     /**
      * Get order details by ID
      */
-    public function show($id): JsonResponse
+    public function show(Site $site, $id): JsonResponse
     {
         try {
-            // Sample data - replace with actual database query
-            $order = [
-                'id' => $id,
-                'name' => 'Kiên Ph?m',
-                'email' => 'admin@admin.com',
-                'phone' => '0394859392',
-                'address' => 'tran phu, hoang mai',
-                'subtotal' => 200.00,
-                'discount_coupon' => '-',
-                'discount' => 0,
-                'shipping' => 30.00,
-                'total' => 230.00,
-                'status' => 'new',
-                'note' => '',
-                'currency' => '$',
-                'products' => [
-                    [
-                        'sku' => '789-07',
-                        'name' => 'Sesame Street Ut',
-                        'quantity' => 1,
-                        'price' => 200.00
-                    ]
-                ]
+            if ($site->workspace->user_id !== Auth::id()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            $domainName = $site->domain_name;
+            $dbName = str_replace('.' . DOMAIN_BASE, '', $domainName);
+            if (!empty($site->db_name)) {
+                $dbName = $site->db_name;
+            }
+            $connectionName = setupTenantConnection($dbName);
+
+            $order = DB::connection($connectionName)
+                ->table('orders')
+                ->where('id', $id)
+                ->first();
+
+            if (!$order) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Order not found'
+                ], 404);
+            }
+
+            $orderProducts = DB::connection($connectionName)
+                ->table('order_product')
+                ->where('order_id', $order->id)
+                ->get();
+
+            $products = $orderProducts->map(function ($product) {
+                return [
+                    'sku' => $product->sku,
+                    'name' => $product->name,
+                    'quantity' => (int) $product->quantity,
+                    'price' => floatval($product->price ?? 0),
+                ];
+            })->toArray();
+
+            $orderData = [
+                'id' => $order->id,
+                'order_no' => $order->order_no,
+                'name' => $order->name,
+                'email' => $order->email,
+                'phone' => $order->phone,
+                'address' => $order->address,
+                'subtotal' => floatval($order->subtotal ?? 0),
+                'discount_coupon' => $order->discount_coupon ?? '',
+                'discount' => floatval($order->discount ?? 0),
+                'shipping' => floatval($order->shipping ?? 0),
+                'total' => floatval($order->total ?? 0),
+                'status' => $this->mapOrderStatus($order->status ?? 0),
+                'note' => $order->note ?? '',
+                'currency' => $order->currency ?? '$',
+                'products' => $products,
+                'created_at' => $order->created_at,
+                'updated_at' => $order->updated_at,
             ];
 
             return response()->json([
                 'success' => true,
-                'data' => $order
+                'data' => $orderData
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -165,26 +169,41 @@ class OrderController extends Controller
     /**
      * Export orders to Excel
      */
-    public function export(): Response
+    public function export(Site $site): Response
     {
         try {
-            // Sample data - replace with actual database query
-            $orders = [
-                [
-                    'id' => '56038079',
-                    'name' => 'Kiên Ph?m',
-                    'email' => 'admin@admin.com',
-                    'phone' => '0394859392',
-                    'address' => 'tran phu, hoang mai',
-                    'discount_coupon' => '',
-                    'currency' => '$',
-                    'discount' => 0,
-                    'subtotal' => 200,
-                    'shipping' => 30,
-                    'total' => 230,
-                    'note' => ''
-                ]
-            ];
+            if ($site->workspace->user_id !== Auth::id()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            $domainName = $site->domain_name;
+            $dbName = str_replace('.' . DOMAIN_BASE, '', $domainName);
+            if (!empty($site->db_name)) {
+                $dbName = $site->db_name;
+            }
+            $connectionName = setupTenantConnection($dbName);
+
+            $orders = DB::connection($connectionName)
+                ->table('orders')
+                ->orderBy('id', 'desc')
+                ->get()
+                ->map(function ($order) {
+                    return [
+                        'id' => $order->id,
+                        'name' => $order->name,
+                        'email' => $order->email,
+                        'phone' => $order->phone,
+                        'address' => $order->address,
+                        'discount_coupon' => $order->discount_coupon ?? '',
+                        'currency' => $order->currency ?? '$',
+                        'discount' => floatval($order->discount ?? 0),
+                        'subtotal' => floatval($order->subtotal ?? 0),
+                        'shipping' => floatval($order->shipping ?? 0),
+                        'total' => floatval($order->total ?? 0),
+                        'note' => $order->note ?? '',
+                    ];
+                })
+                ->toArray();
 
             $spreadsheet = new Spreadsheet();
             $sheet = $spreadsheet->getActiveSheet();
@@ -243,5 +262,17 @@ class OrderController extends Controller
                 'message' => 'Failed to export orders: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    private function mapOrderStatus($status): string
+    {
+        $map = [
+            0 => 'new',
+            1 => 'processing',
+            2 => 'completed',
+            3 => 'cancelled',
+        ];
+
+        return $map[$status] ?? 'new';
     }
 }

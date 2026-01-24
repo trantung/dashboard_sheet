@@ -48,8 +48,42 @@ class SiteController extends Controller
             $db_name = $site->db_name;
         }
         $connectionName = setupTenantConnection($db_name);
+        $siteType = $site->type ?? BLOG;
         $sheetInformationData = $this->siteService->getInformationData($connectionName);
-        $sheetContentData = $this->siteService->getContentData($connectionName);
+        $sheetContentData = $this->siteService->getContentData($connectionName, $siteType);
+
+        $contentHeaders = [
+            "Title",
+            "Slug",
+            "Excerpt",
+            "Thumbnail",
+            "Categories",
+            "Author",
+            "Content",
+            "Published Date",
+            "Status"
+        ];
+
+        if ($siteType == ECOMERCE) {
+            $contentHeaders = [
+                "Name",
+                "SKU",
+                "Inventory",
+                "Price",
+                "Old Price",
+                "Link",
+                "Size",
+                "Color",
+                "Material",
+                "Description",
+                "Rating",
+                "Best Selling",
+                "New Arrival",
+                "Images",
+                "Categories"
+            ];
+        }
+
         // Mock data for sheets
         $mockSheetsData = [
             [
@@ -64,17 +98,7 @@ class SiteController extends Controller
             [
                 "sheet_id" => BLOG_SHEET_CONTENT_TAB_ID,
                 "sheet_data" => $sheetContentData,
-                "sheet_headers" => [
-                    "Title",
-                    "Slug",
-                    "Excerpt",
-                    "Thumbnail",
-                    "Categories",
-                    "Author",
-                    "Content",
-                    "Published Date",
-                    "Status"
-                ],
+                "sheet_headers" => $contentHeaders,
                 "sheet_name" => "Content",
             ]
         ];
@@ -98,7 +122,7 @@ class SiteController extends Controller
         $siteData['custom_css'] = ".bg-primary\\/10 {\n    background-color: rgba(15, 157, 96, .1);\n}";
 
         // Tab General Settings
-        $siteData = $this->siteService->formatSite($connectionName, $siteData);
+        $siteData = $this->siteService->formatSite($connectionName, $siteData, $siteType);
         // $siteData['dark_mode'] = true; // Show dark mode
         // $siteData['hide_header'] = true; // Hide header
         // $siteData['hide_footer'] = true; // Hide footer
@@ -381,6 +405,8 @@ class SiteController extends Controller
                 ], 400);
             }
 
+            $siteType = $site->type ?? BLOG;
+
             // Truncate specific tables before syncing
             $this->truncateTables($db_name);
 
@@ -390,7 +416,7 @@ class SiteController extends Controller
                 'full_domain' => $site->domain_name,
                 'sheet_url' => $site->google_sheet,
                 'db_name' => $db_name
-            ]);
+            ], $siteType);
 
             $responseImport = $importResult->getData(true);
             
@@ -513,7 +539,8 @@ class SiteController extends Controller
         }
         
         $connectionName = setupTenantConnection($db_name);
-        $res = $this->siteService->settingUpdate($connectionName, $request->all());
+        $siteType = $site->type ?? BLOG;
+        $res = $this->siteService->settingUpdate($connectionName, $request->all(), $siteType);
         return response()->json(['success' => true, 'data' => $site]);
     }
 

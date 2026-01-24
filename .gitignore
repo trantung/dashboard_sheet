@@ -24,3 +24,7 @@ Homestead.yaml
 Thumbs.db
 storage/google-service-account.json
 storage/google-service-account.json
+
+composer.lock
+package-lock.json
+storage/framework

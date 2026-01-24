@@ -56,6 +56,10 @@ return new class extends Migration
             $table->tinyInteger('footer_is_show')->default(1)->comment('1: show footer 2: not show');
             $table->tinyInteger('header_is_show');
             $table->tinyInteger('hero_section_is_show')->default(1)->comment('1: show hero section 2: not show');
+            $table->tinyInteger('disable_banner')->default(2)->comment('1: disable banner 2: show');
+            $table->tinyInteger('disable_detail_page')->default(2)->comment('1: disable detail page 2: enable');
+            $table->tinyInteger('disable_index')->default(2)->comment('1: disable indexing 2: enable');
+            $table->tinyInteger('disable_auto_sync')->default(2)->comment('1: disable auto sync 2: enable');
             $table->tinyInteger('remove_icon_build_on');
             $table->tinyInteger('email_subscribed')->default(1)->comment('1: show subscribed email 2: not show');
             $table->tinyInteger('about_us_is_show')->default(1)->comment('1: show button about us on header 2: not show');
@@ -64,6 +68,7 @@ return new class extends Migration
             $table->tinyInteger('font_size')->default(1)->comment('1: display small text title 2: not small');
             $table->integer('paginate')->default(10)->comment('paginate from 10-50');
             $table->tinyInteger('grid_content')->default(2)->comment('Display the number of content columns');
+            $table->tinyInteger('disable_toc')->default(2)->comment('1: disable TOC 2: enable');
             $table->string('font_family')->default('Roboto')->comment('Display font for website using google font');
             $table->tinyInteger('site_publish')->default(1)->comment('1: Publish your website to the internet 2: not publish');
             $table->timestamps();
@@ -75,9 +80,9 @@ return new class extends Migration
             $table->string('link');
             $table->tinyInteger('position')->default(1)->comment('1: header 2: footer');
             $table->tinyInteger('target')->default(1)->comment('1: same tab 2: new tab');
-            $table->string('meta_title');
-            $table->text('meta_description');
-            $table->string('image_share_url');
+            // $table->string('meta_title');
+            // $table->text('meta_description');
+            // $table->string('image_share_url');
             $table->timestamps();
         });
 
