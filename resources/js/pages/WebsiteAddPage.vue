@@ -197,7 +197,7 @@
                             <div class="input-group">
                                 <span class="input-group-text">https://</span>
                                 <input v-model="subdomain" type="text" class="form-control" placeholder="testweb">
-                                <span class="input-group-text text-muted">.microgem.io.vn</span>
+                                <span class="input-group-text text-muted">{{ DOMAIN_BASE }}</span>
                             </div>
                         </div>
                     </div>
@@ -224,6 +224,8 @@ import NotificationAlert from '../components/NotificationAlert.vue'
 
 const router = useRouter()
 const route = useRoute()
+
+const DOMAIN_BASE = import.meta.env.VITE_DOMAIN_BASE;
 
 const currentStep = ref(1)
 const tempId = ref('')

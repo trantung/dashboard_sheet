@@ -90,7 +90,7 @@ class SiteService
         $siteData['feedback_form'] = 2; // Show feedback form
         $siteData['text_center'] = 2; // Text center
         $siteData['small_hero'] = 1; // Font size
-        $siteData['grid_content'] = 2; // Grid content
+        $siteData['grid_content'] = 3; // Grid content
         $siteData['pagination_size'] = 10; // Pagination Size
         $siteData['font_family'] = "Poppins"; // Font Family
         $siteData['published'] = 1; // Publish website
@@ -148,7 +148,7 @@ class SiteService
             "paginate" => $data['pagination_size'],
             "site_publish" => $data['published'],
             "remove_icon_build_on" => $data['build_on_sheetany'],
-            "grid_content" => $data['grid_content'] ?? 2,
+            "grid_content" => $data['grid_content'] ?? 3,
             "disable_auto_sync" => $data['disable_auto_sync'] ?? 2,
             "disable_detail_page" => $data['disable_detail_page'] ?? 2,
             "disable_index" => $data['disable_index'] ?? 2,

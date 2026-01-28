@@ -111,6 +111,9 @@ const loading = ref(false)
 const initialLoading = ref(true)
 const selectedTemplateId = ref(null)
 
+const PREVIEW_URL_BLOG = import.meta.env.VITE_PREVIEW_URL_BLOG;
+const PREVIEW_URL_ECOMMERCE = import.meta.env.VITE_PREVIEW_URL_ECOMMERCE;
+
 const templates = ref([
     {
         id: 1,
@@ -121,7 +124,7 @@ const templates = ref([
         site_type: 1,
         // google_sheet_url: 'https://docs.google.com/spreadsheets/d/1EPVH68GntuAK5-onj85ORQlWgbHf0VRjCN52_AoEJB8/edit?gid=0#gid=0',
         google_sheet_url: 'https://docs.google.com/spreadsheets/d/1YyeccCB0F4S7Es4-7WHfrPJuqsFRHdntfWITBMV4l_k/edit?gid=0#gid=0',
-        preview_url: 'https://sheetfe.microgem.io.vn/'
+        preview_url: PREVIEW_URL_BLOG
     },
     {
         id: 2,
@@ -131,7 +134,7 @@ const templates = ref([
         image: `${sheetEcommerce}`,
         site_type: 2,
         google_sheet_url: 'https://docs.google.com/spreadsheets/d/1vD7btlKwh00lhEmHhhKLVkafp8VhGrQYEYYyOuZozoQ/edit?gid=679145369#gid=679145369',
-        preview_url: 'https://sheetshop.microgem.io.vn/'
+        preview_url: PREVIEW_URL_ECOMMERCE
     }
 ])
 

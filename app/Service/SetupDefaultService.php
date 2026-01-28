@@ -31,8 +31,9 @@ class SetupDefaultService
         }
     }
 
-    public function extractSubdomainAndDomain($fullDomain, $domainRoot = DOMAIN_BASE)
+    public function extractSubdomainAndDomain($fullDomain, $domainRoot = null)
     {
+        $domainRoot ??= domain_base();
         if (!str_ends_with($fullDomain, $domainRoot)) {
             throw new Exception("The domain name does not match the root domain ({$domainRoot})");
         }
@@ -309,7 +310,7 @@ class SetupDefaultService
         try {
             $apiToken = getenv('CLOUD_FLARE_API_TOKEN');
             $fullDomain = $request['full_domain'];
-            [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, DOMAIN_BASE);
+            [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, domain_base());
             $zoneId = $this->getZoneIdByDomain($apiToken, $domain);
             $result = $this->deleteApacheVirtualHostAndCloudflare($fullDomain, $apiToken, $zoneId);
             return response()->json([

@@ -427,7 +427,7 @@ const fetchWebsiteInfo = async () => {
             paginationSize.value = response.data.pagination_size || 10;
             publishWebsite.value = response.data.published == 1 || false;
             buildOnSheetany.value = response.data.build_on_sheetany == 1 || false;
-            gridContent.value = response.data.grid_content || 2;
+            gridContent.value = response.data.grid_content || 3;
 
             notificationAlert.value?.showSuccess('Website information loaded successfully.');
         } else {
