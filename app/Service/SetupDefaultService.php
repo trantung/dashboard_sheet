@@ -13,26 +13,11 @@ class SetupDefaultService
     public function addDomainToDns($fullDomain, $projectPath, $portProject = 3001)
     {
         try {
-            // $apiToken = getenv('CLOUD_FLARE_API_TOKEN');
-            // $ip = getenv('SERVER_IP_ADDRESS');
-            // [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, domain_base());
-            // $zoneId = $this->getZoneIdByDomain($apiToken, $domain);
-
-            // if (!$zoneId) {
-            //     return response()->json([
-            //         'status' => false,
-            //         'message' => "Could not find Zone ID for {$domain}"
-            //     ]);
-            // }
-            // dd()
-            // $response = $this->createSubdomainOnCloudflare($apiToken, $zoneId, $sub, $domain, $ip);
-            // $projectPath = '/var/www/html/sheetany_blog/dist';
             $vhostResult = $this->addApacheVirtualHost($fullDomain, $projectPath, $portProject);
             return response()->json([
                 'status' => true,
                 'message' => 'Subdomain and VirtualHost created successfully.',
                 'data' => [
-                    // 'cloudflare_response' => json_decode($response, true),
                     'vhost_result' => $vhostResult
                 ]
             ]);
