@@ -22,7 +22,7 @@ class NavbarController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $domain_name = $site->domain_name;
-        $db_name = str_replace('.' . DOMAIN_BASE, '', $domain_name);
+        $db_name = str_replace('.' . domain_base(), '', $domain_name);
         if(!empty($site->db_name)){
             $db_name = $site->db_name;
         }
@@ -69,7 +69,7 @@ class NavbarController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $domain_name = $site->domain_name;
-        $db_name = str_replace('.' . DOMAIN_BASE, '', $domain_name);
+        $db_name = str_replace('.' . domain_base(), '', $domain_name);
         if(!empty($site->db_name)){
             $db_name = $site->db_name;
         }
@@ -105,7 +105,7 @@ class NavbarController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $domain_name = $site->domain_name;
-        $db_name = str_replace('.' . DOMAIN_BASE, '', $domain_name);
+        $db_name = str_replace('.' . domain_base(), '', $domain_name);
         if(!empty($site->db_name)){
             $db_name = $site->db_name;
         }
@@ -135,7 +135,7 @@ class NavbarController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $domain_name = $site->domain_name;
-        $db_name = str_replace('.' . DOMAIN_BASE, '', $domain_name);
+        $db_name = str_replace('.' . domain_base(), '', $domain_name);
         if(!empty($site->db_name)){
             $db_name = $site->db_name;
         }

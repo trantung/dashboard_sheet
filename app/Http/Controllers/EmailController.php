@@ -24,7 +24,7 @@ class EmailController extends Controller
         }
 
         $domain_name = $site->domain_name;
-        $db_name = str_replace('.' . DOMAIN_BASE, '', $domain_name);
+        $db_name = str_replace('.' . domain_base(), '', $domain_name);
 
         if (!empty($site->db_name)) {
             $db_name = $site->db_name;
