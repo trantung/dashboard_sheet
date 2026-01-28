@@ -169,7 +169,12 @@ class SiteController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $check = $this->setupDefaultService->deleteDomain(['full_domain' => $site->domain_name]);
-
+        //xóa database dựa vào $site->db_name
+        $db_name = $site->db_name;
+        if($db_name){
+            $this->databaseDefaultService->deleteDatabase($db_name);
+        }
+        Site::destroy($site->id);
         return response()->json(['success' => true, 'message' => 'Site deleted successfully']);
     }
 

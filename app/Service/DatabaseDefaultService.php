@@ -698,4 +698,14 @@ class DatabaseDefaultService
             return false;
         }
     }
+
+    public function deleteDatabase($db_name)
+    {
+        $command = "mysql -u " . env('DB_USERNAME') . " -p" . env('DB_PASSWORD') . " -e \"DROP DATABASE IF EXISTS " . $db_name . ";\"";
+        exec($command, $output, $returnVar);
+        if ($returnVar !== 0) {
+            throw new Exception("Error deleting database: " . implode("\n", $output));
+        }
+        return true;
+    }
 }
