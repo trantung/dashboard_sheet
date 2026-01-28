@@ -11,7 +11,7 @@ define('ECOMERCE', 2);
 define('CATEGORY_SHEET_NAME', 'Categories');
 define('PRODUCT_CONTENT', 'Content');
 define('PRODUCT_PUBLISHED_DATE', 'Published Date');
-define('DOMAIN_BASE', 'microgem.io.vn');
+define('DOMAIN_BASE', 'io.vn');
 
 define('BLOG_SHEET_INFORMATION_TAB_ID', 0);
 define('BLOG_SHEET_CONTENT_TAB_ID', 1);
