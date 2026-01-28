@@ -123,4 +123,5 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'domain_base' => env('VITE_DOMAIN_BASE'),
 ];

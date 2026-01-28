@@ -43,7 +43,7 @@ class SiteController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $domain_name = $site->domain_name;
-        $db_name = str_replace('.' . DOMAIN_BASE, '', $domain_name);
+        $db_name = str_replace('.' . domain_base(), '', $domain_name);
         if(!empty($site->db_name)){
             $db_name = $site->db_name;
         }
@@ -195,7 +195,7 @@ class SiteController extends Controller
     //                 // Custom validation rule: Kiểm tra xem subdomain đã tồn tại chưa
     //                 // Ví dụ: tránh trùng lặp subdomain trên nền tảng của bạn
     //                 function ($attribute, $value, $fail) use ($site) {
-    //                     $fullDomain = $value . '.' . DOMAIN_BASE;
+    //                     $fullDomain = $value . '.' . domain_base();
     //                     // Giả định 'domain_name' là cột trong bảng 'sites'
     //                     if (Site::where('domain_name', $fullDomain)->where('id', '!=', $site->id)->exists()) {
     //                         $fail("The subdomain '{$value}' is already taken. Please choose another one.");
@@ -205,7 +205,7 @@ class SiteController extends Controller
     //         ]);
 
     //         $newSubdomain = $validatedData['subdomain'];
-    //         $baseDomain = '.' . DOMAIN_BASE; // Đảm bảo base domain là cố định
+    //         $baseDomain = '.' . domain_base(); // Đảm bảo base domain là cố định
     //         $old_domain = $site->domain_name;
     //         // 2. Tạo domain_name đầy đủ mới
     //         $newFullDomain = $newSubdomain . $baseDomain;
@@ -257,7 +257,7 @@ class SiteController extends Controller
                     'max:60',
                     'regex:/^[a-zA-Z0-9-]+$/',
                     function ($attribute, $value, $fail) use ($site) {
-                        $fullDomain = $value . '.' . DOMAIN_BASE;
+                        $fullDomain = $value . '.' . domain_base();
                         if (Site::where('domain_name', $fullDomain)->where('id', '!=', $site->id)->exists()) {
                             $fail("The subdomain '{$value}' is already taken. Please choose another one.");
                         }
@@ -266,7 +266,7 @@ class SiteController extends Controller
             ]);
 
             $newSubdomain = $validatedData['subdomain'];
-            $baseDomain = '.' . DOMAIN_BASE;
+            $baseDomain = '.' . domain_base();
             $oldDomain = $site->domain_name;
             $newFullDomain = $newSubdomain . $baseDomain;
 
@@ -382,7 +382,7 @@ class SiteController extends Controller
             }
 
             // $domain_name = $site->domain_name;
-            // $db_name = str_replace('.' . DOMAIN_BASE, '', $domain_name);
+            // $db_name = str_replace('.' . domain_base(), '', $domain_name);
             // if(!empty($site->db_name)){
             //     $db_name = $site->db_name;
             // }
@@ -533,7 +533,7 @@ class SiteController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         $domain_name = $site->domain_name;
-        $db_name = str_replace('.' . DOMAIN_BASE, '', $domain_name);
+        $db_name = str_replace('.' . domain_base(), '', $domain_name);
         if(!empty($site->db_name)){
             $db_name = $site->db_name;
         }

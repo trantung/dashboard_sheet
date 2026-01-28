@@ -158,7 +158,7 @@ class TempController extends Controller
             ]);
 
             // Create site
-            $domain_name = $temp->site_domain . '.' . DOMAIN_BASE;
+            $domain_name = $temp->site_domain . '.' . domain_base();
             $site = Site::create([
                 'workspace_id' => $temp->workspace_id,
                 'type' => $temp->site_type,

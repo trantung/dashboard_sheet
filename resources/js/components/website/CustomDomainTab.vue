@@ -21,7 +21,7 @@
                     <div class="flex-grow-1">
                         <h6 class="card-title mb-2">Subdomain</h6>
                         <p class="text-muted small mb-0">
-                            Your <strong>*.microgem.io.vn</strong> subdomain.<br>
+                            Your <strong>*{{ DOMAIN_BASE }}</strong> subdomain.<br>
                             You can easily update it here.
                         </p>
                     </div>
@@ -43,7 +43,7 @@
                             :class="{ 'is-invalid': subdomainError }"
                             @input="validateSubdomain"
                         >
-                        <span class="input-group-text text-muted bg-light">.microgem.io.vn</span>
+                        <span class="input-group-text text-muted bg-light">{{ DOMAIN_BASE }}</span>
                         <button 
                             class="btn btn-success" 
                             @click="updateSubdomain" 
@@ -68,7 +68,7 @@
                                     :class="{ 'is-invalid': subdomainError }"
                                     @input="validateSubdomain"
                                 >
-                                <span class="input-group-text text-muted bg-light small">.microgem.io.vn</span>
+                                <span class="input-group-text text-muted bg-light small">{{ DOMAIN_BASE }}</span>
                             </div>
                             <div v-if="subdomainError" class="invalid-feedback d-block">
                                 {{ subdomainError }}
@@ -142,6 +142,8 @@ import NotificationAlert from '@/components/NotificationAlert.vue';
 const route = useRoute();
 const notificationAlert = ref(null);
 
+const DOMAIN_BASE = import.meta.env.VITE_DOMAIN_BASE;
+
 const loading = ref(true);
 const subdomain = ref('');
 const currentFullDomain = ref('');
@@ -152,7 +154,7 @@ const subdomainError = ref('');
 // Function to extract subdomain
 const extractSubdomain = (fullDomain) => {
     if (fullDomain) {
-        const parts = fullDomain.split('.microgem.io.vn');
+        const parts = fullDomain.split(DOMAIN_BASE);
         if (parts.length > 0 && parts[0]) {
             return parts[0];
         }
@@ -218,7 +220,7 @@ const updateSubdomain = async () => {
             subdomain.value = extractSubdomain(response.data.domain_name); 
             notificationAlert.value?.showSuccess('Subdomain updated successfully!');
         } else {
-            currentFullDomain.value = `${value}.microgem.io.vn`;
+            currentFullDomain.value = `${value}${DOMAIN_BASE}`;
             notificationAlert.value?.showSuccess('Subdomain updated successfully!');
         }
     } catch (error) {

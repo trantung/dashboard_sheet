@@ -31,7 +31,7 @@ class OrderController extends Controller
             $page = max(1, (int) $page);
 
             $domainName = $site->domain_name;
-            $dbName = str_replace('.' . DOMAIN_BASE, '', $domainName);
+            $dbName = str_replace('.' . domain_base(), '', $domainName);
             if (!empty($site->db_name)) {
                 $dbName = $site->db_name;
             }
@@ -102,7 +102,7 @@ class OrderController extends Controller
             }
 
             $domainName = $site->domain_name;
-            $dbName = str_replace('.' . DOMAIN_BASE, '', $domainName);
+            $dbName = str_replace('.' . domain_base(), '', $domainName);
             if (!empty($site->db_name)) {
                 $dbName = $site->db_name;
             }
@@ -177,7 +177,7 @@ class OrderController extends Controller
             }
 
             $domainName = $site->domain_name;
-            $dbName = str_replace('.' . DOMAIN_BASE, '', $domainName);
+            $dbName = str_replace('.' . domain_base(), '', $domainName);
             if (!empty($site->db_name)) {
                 $dbName = $site->db_name;
             }
