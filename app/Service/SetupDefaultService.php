@@ -13,27 +13,26 @@ class SetupDefaultService
     public function addDomainToDns($fullDomain, $projectPath, $portProject = 3001)
     {
         try {
-            $apiToken = getenv('CLOUD_FLARE_API_TOKEN');
-            $ip = getenv('SERVER_IP_ADDRESS');
-            [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, DOMAIN_BASE);
-            $zoneId = $this->getZoneIdByDomain($apiToken, $domain);
+            // $apiToken = getenv('CLOUD_FLARE_API_TOKEN');
+            // $ip = getenv('SERVER_IP_ADDRESS');
+            // [$sub, $domain] = $this->extractSubdomainAndDomain($fullDomain, DOMAIN_BASE);
+            // $zoneId = $this->getZoneIdByDomain($apiToken, $domain);
 
-            if (!$zoneId) {
-                return response()->json([
-                    'status' => false,
-                    'message' => "Could not find Zone ID for {$domain}"
-                ]);
-            }
-
-            $response = $this->createSubdomainOnCloudflare($apiToken, $zoneId, $sub, $domain, $ip);
+            // if (!$zoneId) {
+            //     return response()->json([
+            //         'status' => false,
+            //         'message' => "Could not find Zone ID for {$domain}"
+            //     ]);
+            // }
+            // dd()
+            // $response = $this->createSubdomainOnCloudflare($apiToken, $zoneId, $sub, $domain, $ip);
             // $projectPath = '/var/www/html/sheetany_blog/dist';
             $vhostResult = $this->addApacheVirtualHost($fullDomain, $projectPath, $portProject);
-
             return response()->json([
                 'status' => true,
                 'message' => 'Subdomain and VirtualHost created successfully.',
                 'data' => [
-                    'cloudflare_response' => json_decode($response, true),
+                    // 'cloudflare_response' => json_decode($response, true),
                     'vhost_result' => $vhostResult
                 ]
             ]);
@@ -131,7 +130,7 @@ class SetupDefaultService
             exec("sudo a2ensite {$domain}.conf", $out1, $c1);
 
             // Ensure SSL configuration exists
-            $this->ensureSSLConfig($domain, $portProject);
+            // $this->ensureSSLConfig($domain, $portProject);
 
             // Reload Apache
             exec("sudo systemctl reload apache2", $out3, $c2);

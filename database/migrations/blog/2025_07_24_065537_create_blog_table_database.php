@@ -61,8 +61,11 @@ return new class extends Migration
             $table->tinyInteger('text_center')->default(1)->comment('1: center title/info, 2: not center');
             $table->tinyInteger('font_size')->default(1)->comment('1: small text, 2: not small');
             $table->integer('paginate')->default(10)->comment('paginate from 10-50');
-            $table->tinyInteger('grid_content')->default(2)->comment('number of columns');
-            $table->string('font_family')->default('Roboto')->comment('Google font');
+            $table->tinyInteger('grid_content')->default(2)->comment('Display the number of content columns');
+            $table->tinyInteger('disable_detail_page')->default(2)->comment('1: disable detail page, 2: enable');
+            $table->tinyInteger('disable_index')->default(2)->comment('1: disable indexing, 2: enable');
+            $table->tinyInteger('disable_toc')->default(2)->comment('1: disable TOC, 2: enable');
+            $table->string('font_family')->default('Roboto')->comment('Display font for website using google font');
             $table->tinyInteger('site_publish')->default(1)->comment('1: publish, 2: not publish');
             $table->timestamps();
         });
