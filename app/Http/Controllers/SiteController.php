@@ -168,8 +168,7 @@ class SiteController extends Controller
         if ($site->workspace->user_id !== Auth::id()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
-
-        // $site->delete();
+        $check = $this->setupDefaultService->deleteDomain(['full_domain' => $site->domain_name]);
 
         return response()->json(['success' => true, 'message' => 'Site deleted successfully']);
     }

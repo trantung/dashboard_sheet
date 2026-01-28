@@ -88,14 +88,19 @@ class SetupDefaultService
         try {
             $confPath = "/etc/apache2/sites-available/{$domain}.conf";
             $vhostConfig = <<<EOL
-                <VirtualHost *:80>
+                <VirtualHost *:80 *:443>
                     ServerName {$domain}
-                    ErrorLog \${APACHE_LOG_DIR}/{$domain}_error.log
-                    CustomLog \${APACHE_LOG_DIR}/{$domain}_access.log combined
+
+                    # Bật SSL nếu request đến từ cổng 443
+                    # Sử dụng chung chứng chỉ SSL của site chính (hoặc Cloudflare Origin CA)
+                    SSLEngine on
+                    SSLCertificateFile /etc/letsencrypt/live/ieltscheckmate.edu.vn/fullchain.pem
+                    SSLCertificateKeyFile /etc/letsencrypt/live/ieltscheckmate.edu.vn/privkey.pem
+
                     ProxyPreserveHost On
-                    ProxyRequests Off
                     ProxyPass / http://localhost:{$portProject}/
                     ProxyPassReverse / http://localhost:{$portProject}/
+
                     RewriteEngine on
                     RewriteCond %{HTTP:Upgrade} =websocket [NC]
                     RewriteRule /(.*) ws://localhost:{$portProject}/\$1 [P,L]
@@ -327,28 +332,27 @@ class SetupDefaultService
         }
     }
 
-    public function deleteApacheVirtualHostAndCloudflare($domain, $cloudflareToken, $zoneId)
+    public function deleteApacheVirtualHostAndCloudflare($domain, $cloudflareToken = null, $zoneId = null)
     {
         $confFile = "{$domain}.conf";
-        $confFileSSL = "{$domain}.-le-ssl.conf";
+        // $confFileSSL = "{$domain}.-le-ssl.conf";
         $confPath = "/etc/apache2/sites-available/{$confFile}";
         $enabledPath = "/etc/apache2/sites-enabled/{$confFile}";
-        $confPathSSL = "/etc/apache2/sites-available/{$confFileSSL}";
-        $enabledPathSSL = "/etc/apache2/sites-enabled/{$confFileSSL}";
+        // $confPathSSL = "/etc/apache2/sites-available/{$confFileSSL}";
+        // $enabledPathSSL = "/etc/apache2/sites-enabled/{$confFileSSL}";
         // Disable the Apache site
         exec("sudo a2dissite {$confFile}", $out1, $code1);
-        exec("sudo a2dissite {$confFileSSL}", $out11, $code11);
         // Remove symlink if exists
         if (file_exists($enabledPath)) {
             exec("sudo rm -f {$enabledPath}", $outSymlink, $codeSymlink);
         } else {
             $codeSymlink = 0;
         }
-        if (file_exists($enabledPathSSL)) {
-            exec("sudo rm -f {$enabledPathSSL}", $outSymlink1, $codeSymlink1);
-        } else {
-            $codeSymlink1 = 0;
-        }
+        // if (file_exists($enabledPathSSL)) {
+        //     exec("sudo rm -f {$enabledPathSSL}", $outSymlink1, $codeSymlink1);
+        // } else {
+        //     $codeSymlink1 = 0;
+        // }
       
         // Remove the actual config file if it exists
         if (file_exists($confPath)) {
@@ -357,41 +361,38 @@ class SetupDefaultService
             $code2 = 0;
         }
 
-        if (file_exists($confPathSSL)) {
-            exec("sudo rm -f {$confPathSSL}", $out22, $code22);
-        } else {
-            $code22 = 0;
-        }
+        // if (file_exists($confPathSSL)) {
+        //     exec("sudo rm -f {$confPathSSL}", $out22, $code22);
+        // } else {
+        //     $code22 = 0;
+        // }
         // Delete SSL certificate using certbot
-        $command = "sudo certbot delete --cert-name " . escapeshellarg($domain) . " 2>&1";
-        exec($command, $output, $returnCode);
+        // $command = "sudo certbot delete --cert-name " . escapeshellarg($domain) . " 2>&1";
+        // exec($command, $output, $returnCode);
 
         // Remove auto-generated SSL config file
-        $commandRemoveSSL = "sudo rm -f {$domain}-le-ssl.conf";
-        exec($commandRemoveSSL, $outputSSL, $returnCodeSSL);
+        // $commandRemoveSSL = "sudo rm -f {$domain}-le-ssl.conf";
+        // exec($commandRemoveSSL, $outputSSL, $returnCodeSSL);
 
         // Reload Apache
         exec("sudo systemctl reload apache2", $outReload, $codeReload);
 
         // Get DNS record ID from Cloudflare
-        $recordId = $this->getCloudflareDNSRecordId($domain, $cloudflareToken, $zoneId);
-        $deleted = false;
+        // $recordId = $this->getCloudflareDNSRecordId($domain, $cloudflareToken, $zoneId);
+        // $deleted = false;
 
-        // Attempt to delete DNS record
-        if ($recordId) {
-            $deleted = $this->deleteCloudflareDNSRecord($recordId, $cloudflareToken, $zoneId);
-        }
+        // // Attempt to delete DNS record
+        // if ($recordId) {
+        //     $deleted = $this->deleteCloudflareDNSRecord($recordId, $cloudflareToken, $zoneId);
+        // }
 
         return [
             'apache' => $code1 === 0 && $code2 === 0 && $codeSymlink === 0,
-            'cloudflare_deleted' => $deleted,
+            // 'cloudflare_deleted' => $deleted,
             'messages' => [
                 'apache' => ($code1 === 0 && $code2 === 0 && $codeSymlink === 0)
                     ? "Successfully deleted VirtualHost for {$domain}."
                     : "Failed to delete VirtualHost.",
-                'cloudflare' => $deleted
-                    ? "DNS record deleted from Cloudflare."
-                    : "Could not find or delete DNS record from Cloudflare."
             ]
         ];
     }
